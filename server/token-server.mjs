@@ -1,8 +1,17 @@
 import "dotenv/config";
 import express from "express";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import fs from "node:fs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, "..");
+const distDir = path.join(rootDir, "dist");
 
 const app = express();
-const PORT = Number(process.env.TOKEN_SERVER_PORT || 3456);
+// Render / Railway / Fly inject PORT. Local dev keeps TOKEN_SERVER_PORT (default 3456).
+const PORT = Number(process.env.PORT || process.env.TOKEN_SERVER_PORT || 3456);
+const HOST = process.env.HOST || "0.0.0.0";
 
 const AGENT_ID =
   process.env.AGENT_ID || "agent_7201ky2fs4xtfwg9tn2x641n318p";
@@ -20,6 +29,15 @@ function apiHeaders() {
   }
   return headers;
 }
+
+/** Liveness for Render health checks — never returns the API key. */
+app.get("/api/health", (_req, res) => {
+  res.json({
+    ok: true,
+    has_xi_api_key: Boolean(process.env.XI_API_KEY),
+    agent_id: AGENT_ID,
+  });
+});
 
 /**
  * WebRTC token with optional branch_id (see API: GET /v1/convai/conversation/token).
@@ -53,7 +71,8 @@ app.get("/api/token", async (req, res) => {
 app.get("/api/agent-config", async (req, res) => {
   if (!process.env.XI_API_KEY) {
     return res.status(503).json({
-      error: "XI_API_KEY not set — cannot load live agent config. Add it to .env and restart.",
+      error:
+        "XI_API_KEY not set — cannot load live agent config. Set it on the host (Render env) or in local .env.",
       agent_id: AGENT_ID,
       branch_id: BRANCH_ID || null,
     });
@@ -120,7 +139,8 @@ app.get("/api/agent-config", async (req, res) => {
 app.post("/api/tts", async (req, res) => {
   if (!process.env.XI_API_KEY) {
     return res.status(503).json({
-      error: "XI_API_KEY not set — cannot generate TTS for QC. Add it to .env and restart npm run dev.",
+      error:
+        "XI_API_KEY not set — cannot generate TTS for QC. Set it on the host (Render env) or in local .env.",
     });
   }
 
@@ -184,11 +204,25 @@ app.post("/api/tts", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Token server http://127.0.0.1:${PORT} (agent ${AGENT_ID}, ${API_ORIGIN})`);
+// Production: serve the Vite build from the same origin as /api/* (no key in static assets).
+const distReady = fs.existsSync(path.join(distDir, "index.html"));
+if (distReady) {
+  app.use(express.static(distDir, { index: false, maxAge: "1h" }));
+  app.get(/^(?!\/api\/).*/, (_req, res) => {
+    res.sendFile(path.join(distDir, "index.html"));
+  });
+}
+
+app.listen(PORT, HOST, () => {
+  console.log(`Token server http://${HOST}:${PORT} (agent ${AGENT_ID}, ${API_ORIGIN})`);
   console.log(
     process.env.XI_API_KEY
       ? "XI_API_KEY set — /api/agent-config (live GET) and /api/tts enabled"
       : "XI_API_KEY missing — /api/agent-config and /api/tts will return 503 (no mock fallback)"
+  );
+  console.log(
+    distReady
+      ? `Serving static UI from ${distDir}`
+      : `No dist/ yet — API only (run npm run build for production UI)`
   );
 });

@@ -1,0 +1,22 @@
+# Render Blueprint — one-time: Dashboard → New → Blueprint → connect this repo.
+# https://dashboard.render.com/select-repo?type=blueprint
+#
+# XI_API_KEY: prefer syncing from GitHub Actions (see .github/workflows/deploy-render.yml).
+# Or paste the same value once under the service → Environment.
+
+services:
+  - type: web
+    name: agents-test-mockup
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install --no-audit --no-fund && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: XI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_ORIGIN
+        value: https://api.eu.residency.elevenlabs.io

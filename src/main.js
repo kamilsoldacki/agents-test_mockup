@@ -16,6 +16,13 @@ const LIVEKIT_URL =
 const CONVAI_TOKEN_SOURCE = "js_sdk";
 const CONVAI_TOKEN_VERSION = "1.2.1";
 
+/** Optional absolute API origin (e.g. https://agents-test-mockup.onrender.com). Empty = same origin. */
+const API_BASE = String(import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
+
+function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
+
 const LLM_LABELS = {
   "gemini-2.5-flash": "Gemini 2.5 Flash",
   "gemini-2.5-flash-lite": "Gemini 2.5 Flash Lite",
@@ -390,7 +397,7 @@ function parseTokenResponse(text, httpStatus) {
 }
 
 async function fetchConversationTokenFromDevServer() {
-  const res = await fetch("/api/token");
+  const res = await fetch(apiUrl("/api/token"));
   const text = await res.text();
   if (!res.ok) {
     let detail = text;
@@ -431,6 +438,16 @@ async function fetchConversationTokenFromBrowser() {
 
 function isGitHubPagesHost() {
   return typeof location !== "undefined" && /\.github\.io$/i.test(location.hostname);
+}
+
+/** Dev proxy, production Express (Render), or explicit VITE_API_BASE — never put XI_API_KEY in the client. */
+function shouldUseTokenServer() {
+  if (String(import.meta.env.VITE_API_BASE || "").trim()) return true;
+  if (import.meta.env.DEV) {
+    return import.meta.env.VITE_DEV_USE_TOKEN_SERVER !== "false";
+  }
+  // Production on same-origin Node host (Render). Static GitHub Pages has no /api.
+  return !isGitHubPagesHost();
 }
 
 function setSessionControlsDisabled(disabled) {
@@ -589,7 +606,7 @@ function markConfigUnavailable(reason) {
   els.agentFetchStatus.textContent = `Could not load live settings: ${reason}`;
   setCallUi("idle");
   showError(
-    `Live agent config unavailable: ${reason}. Set XI_API_KEY in .env and ensure the token server can reach ElevenLabs. No repository mock defaults are used.`
+    `Live agent config unavailable: ${reason}. Ensure XI_API_KEY is set on the server (Render env / local .env) and the API can reach ElevenLabs. No repository mock defaults are used.`
   );
 }
 
@@ -606,7 +623,7 @@ async function loadAgentConfig() {
   showError(null);
 
   try {
-    const res = await fetch("/api/agent-config");
+    const res = await fetch(apiUrl("/api/agent-config"));
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok || !data.agent) {
@@ -668,9 +685,7 @@ async function startConversation() {
     const residency = { origin: API_ORIGIN, livekitUrl: LIVEKIT_URL };
     const textOnly = Boolean(cfg.textOnly);
 
-    const useLocalTokenServer =
-      import.meta.env.DEV && import.meta.env.VITE_DEV_USE_TOKEN_SERVER !== "false";
-    if (useLocalTokenServer) {
+    if (shouldUseTokenServer()) {
       const conversationToken = await fetchConversationTokenFromDevServer();
       conversation = await Conversation.startSession({
         conversationToken,
@@ -771,7 +786,7 @@ async function generateTtsQc() {
   els.ttsQcStopBtn.disabled = false;
 
   try {
-    const res = await fetch("/api/tts", {
+    const res = await fetch(apiUrl("/api/tts"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -794,7 +809,7 @@ async function generateTtsQc() {
       }
       throw new Error(
         detail ||
-          `TTS HTTP ${res.status}. Set XI_API_KEY in .env for live QC playback.`
+          `TTS HTTP ${res.status}. Set XI_API_KEY on the server for live QC playback.`
       );
     }
 
