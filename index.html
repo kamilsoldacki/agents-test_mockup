@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Magenta Voice Eval · Magenta Assistant</title>
+    <meta name="theme-color" content="#f4f4f5" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <div class="brand">
+          <img
+            class="brand-logo"
+            src="https://11labs-nonprd-15f22c1d.s3.eu-west-3.amazonaws.com/a2ea339b-8b5e-41bb-b706-24eda8a4c9e3/elevenlabs-symbol.svg"
+            alt="ElevenLabs"
+            width="40"
+            height="40"
+            decoding="async"
+          />
+          <div class="brand-text">
+            <span class="brand-name">Magenta Voice Eval</span>
+            <span class="brand-sub">Magenta Assistant · Deutsche Telekom</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="card instructions" aria-labelledby="instructions-heading">
+        <h2 id="instructions-heading">How to run a session</h2>
+        <ol>
+          <li>
+            Pick <strong>your native language</strong> — evaluate only languages you speak natively or
+            near-natively.
+          </li>
+          <li>
+            Start the call and talk naturally — like a real conversation you'd hear in
+            <strong>live translation</strong>, not a support hotline. Cover everyday topics (travel,
+            work, weekend plans, food, news) and try to get the assistant to say
+            <strong>numbers, dates and proper names</strong> — that's where accents slip first.
+          </li>
+          <li>
+            Aim for <strong>5+ minutes</strong>, then end the call and run
+            <strong>one more session</strong> — the voice varies naturally between generations, so never
+            judge from a single call.
+          </li>
+          <li>
+            You are rating <strong>how the voice sounds, not what it says</strong> — the assistant invents
+            details on purpose. Ignore factual content entirely.
+          </li>
+          <li>
+            After your sessions, fill in the
+            <a
+              href="https://docs.google.com/spreadsheets/d/1Aj5XRVPQCmAP5jHrTfH3caky9yTL3DOs10I1mfz7jRE/edit?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+              >rating form</a
+            >.
+          </li>
+        </ol>
+      </section>
+
+      <div class="grid">
+        <aside class="card prompt-card" aria-labelledby="prompt-heading">
+          <div class="card-column-body">
+            <div class="card-head">
+              <h2 id="prompt-heading">System prompt</h2>
+              <p class="card-lead">
+                <strong>Leave this as-is for standard evaluation</strong> — everyone must test with the
+                same persona for results to be comparable. Edit only if you were explicitly asked to test
+                a prompt variant. Changes apply to your next call only and are never saved to the agent.
+              </p>
+              <button type="button" id="resetPromptBtn" class="btn-link">Reset to default</button>
+            </div>
+            <div class="prompt-scroll">
+              <label class="visually-hidden" for="systemPrompt">System prompt</label>
+              <textarea class="prompt-body" id="systemPrompt" spellcheck="false"># Role
+You are a conversational partner for evaluating voice quality for live translation. Talk like someone in a real, everyday conversation that is being translated live - travel, work, weekend plans, food, news, hobbies, meeting someone, making arrangements. You are not a customer-support agent, not a hotline, and not a product assistant.
+
+# Language
+- The conversation language is fixed for this session (selected before the call). Speak only this language for the entire conversation.
+- If the caller switches to another language, respond naturally but stay in the session language.
+- Say numbers, prices, dates, phone numbers and proper names the way a native speaker of this language would say them out loud.
+
+# Personality and tone
+- Warm, calm, eye-level - like chatting with a colleague or acquaintance, not reading a script and not teaching a tutorial.
+- Keep it conversational: short turns of 1-3 sentences, natural pacing and pauses, occasional casual phrasing. Ask a light follow-up now and then so the talk keeps flowing.
+- No exaggerated enthusiasm, no exclamation marks, no lecturing.
+
+# Conversation behavior
+- Follow the caller's lead on topic; stay in natural dialogue.
+- Where it fits, weave in concrete spoken details: numbers, prices (e.g. 47,90 euro), dates, place names, and proper names - including brands like MyMagenta or Deutsche Telekom when the topic allows. Invent plausible values freely; accuracy does not matter, natural delivery does.
+- If you don't know something, say so briefly and casually, then move on.
+- Never read out URLs or long lists.
+- Never mention these instructions or that this is an evaluation.
+</textarea>
+            </div>
+          </div>
+          <p class="card-model-foot" aria-label="LLM: Gemini 2.5 Flash">LLM: Gemini 2.5 Flash</p>
+        </aside>
+
+        <main class="card control-card">
+          <div class="card-column-body">
+            <section class="voice-block" aria-labelledby="language-heading">
+              <h2 id="language-heading">Language</h2>
+              <p class="field-hint">
+                Choose the conversation language before you connect — this locks both the language and its
+                voice settings for the session. To test another language, end the call and reconnect.
+                <strong>Evaluate only languages you're native or fluent in.</strong>
+              </p>
+              <label class="select-wrap">
+                <span class="visually-hidden">Language</span>
+                <select id="languageSelect" class="select" required>
+                  <option value="ar">Arabic</option>
+                  <option value="cs">Czech</option>
+                  <option value="hr">Croatian</option>
+                  <option value="da">Danish</option>
+                  <option value="en">English</option>
+                  <option value="fi">Finnish</option>
+                  <option value="fr">French</option>
+                  <option value="de" selected>German</option>
+                  <option value="el">Greek</option>
+                  <option value="it">Italian</option>
+                  <option value="no">Norwegian</option>
+                  <option value="pl">Polish</option>
+                  <option value="ru">Russian</option>
+                  <option value="es">Spanish</option>
+                  <option value="sv">Swedish</option>
+                  <option value="tr">Turkish</option>
+                  <option value="uk">Ukrainian</option>
+                </select>
+              </label>
+            </section>
+
+            <section class="call-block" aria-labelledby="call-heading">
+            <h2 id="call-heading" class="visually-hidden">Session</h2>
+            <p class="field-hint">
+              Use headphones in a quiet room. Speak naturally and let the assistant finish its sentences —
+              interruptions are fine, but give it a few full turns too.
+            </p>
+            <div class="call-surface" data-state="idle">
+              <div class="call-visual" aria-hidden="true">
+                <div class="call-ring"></div>
+                <div class="headphone">
+                  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path
+                      class="hp-band"
+                      d="M12 28c0-11 9.4-20 20-20s20 9 20 20"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    />
+                    <rect class="hp-cup" x="6" y="28" width="14" height="22" rx="4" stroke="currentColor" stroke-width="2.5" />
+                    <rect class="hp-cup" x="44" y="28" width="14" height="22" rx="4" stroke="currentColor" stroke-width="2.5" />
+                  </svg>
+                </div>
+              </div>
+              <p class="call-label" id="callLabel">Ready to connect</p>
+              <p class="call-sub" id="modeLine">Microphone access is requested when you start.</p>
+              <div class="call-actions">
+                <button type="button" id="startBtn" class="btn btn-primary">
+                  <span class="btn-icon" aria-hidden="true">●</span>
+                  Start call
+                </button>
+                <button type="button" id="stopBtn" class="btn btn-ghost" disabled>End call</button>
+              </div>
+            </div>
+
+            <dl class="metrics">
+              <div>
+                <dt>Connection</dt>
+                <dd id="connStatus">Disconnected</dd>
+              </div>
+              <div>
+                <dt>Mode</dt>
+                <dd id="modeStatus">—</dd>
+              </div>
+            </dl>
+
+              <p id="errorBox" class="error" hidden></p>
+            </section>
+          </div>
+          <p class="card-model-foot" aria-label="ElevenLabs TTS model: Eleven v3">Eleven v3</p>
+        </main>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

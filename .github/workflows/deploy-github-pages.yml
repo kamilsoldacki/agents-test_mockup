@@ -1,0 +1,92 @@
+# After enabling GitHub Pages (Settings → Pages → Source: GitHub Actions), push to the default branch (e.g. main).
+#
+# CRITICAL: In Settings → Pages → "Build and deployment", Source must be "GitHub Actions".
+# If Source is "Deploy from a branch" (e.g. main / (root)), GitHub serves raw repo files.
+# Then index.html still points at /src/main.js and npm imports cannot run — the site looks broken.
+#
+# This workflow sets enablement: true so the first run can create the Pages site via API.
+# If that still fails (org policy), enable Source: GitHub Actions once in Settings → Pages.
+
+name: Deploy static site to Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Do not use cache: npm until package-lock.json is committed — without a lockfile
+      # setup-node often fails fast with "Dependencies lock file is not found".
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Compute Vite base path
+        id: vite_base
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPO_NAME="${{ github.event.repository.name }}"
+          OWNER="${{ github.repository_owner }}"
+          if [ "$REPO_NAME" = "${OWNER}.github.io" ]; then
+            echo "path=/" >> "$GITHUB_OUTPUT"
+            echo "User pages site → VITE_BASE_PATH=/"
+          else
+            echo "path=/${REPO_NAME}/" >> "$GITHUB_OUTPUT"
+            echo "Project pages site → VITE_BASE_PATH=/${REPO_NAME}/"
+          fi
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      # Optional Variables: VITE_PAGES_FORCE_WEBRTC, VITE_BRANCH_ID, VITE_USE_WEBSOCKET, …
+      - name: Build
+        env:
+          VITE_BASE_PATH: ${{ steps.vite_base.outputs.path }}
+          VITE_PAGES_FORCE_WEBRTC: ${{ vars.VITE_PAGES_FORCE_WEBRTC }}
+          VITE_BRANCH_ID: ${{ vars.VITE_BRANCH_ID }}
+        run: npm run build
+
+      - name: Verify build is bundled (not raw /src/)
+        run: |
+          set -euo pipefail
+          if grep -q '/src/main.js' dist/index.html; then
+            echo "::error::dist/index.html still references /src/main.js — not a Vite production build."
+            exit 1
+          fi
+          echo "OK: production entry in dist/index.html"
+
+      - name: List build output
+        run: ls -la dist
+
+      - uses: actions/configure-pages@v6
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
