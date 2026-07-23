@@ -56,8 +56,6 @@ const els = {
   callSurface: document.querySelector(".call-surface"),
   callLabel: document.getElementById("callLabel"),
   modeLine: document.getElementById("modeLine"),
-  voiceVolume: document.getElementById("voiceVolume"),
-  voiceVolumeOut: document.getElementById("voiceVolumeOut"),
   voiceId: document.getElementById("voiceId"),
   ttsModelSelect: document.getElementById("ttsModelSelect"),
   stability: document.getElementById("stability"),
@@ -91,6 +89,9 @@ const els = {
 let conversation = null;
 let ttsObjectUrl = null;
 let liveConfigLoaded = false;
+
+/** Session volume from live agent config; applied via conversation.setVolume on connect (no UI). */
+let sessionVoiceVolume = 0.8;
 
 /** Live defaults from last successful /api/agent-config fetch — used by Reset buttons. */
 let loadedDefaults = null;
@@ -150,7 +151,6 @@ function formatFixed(value, digits = 2) {
 }
 
 function syncRangeOutputs() {
-  els.voiceVolumeOut.textContent = formatFixed(els.voiceVolume.value);
   els.stabilityOut.textContent = formatFixed(els.stability.value);
   els.speedOut.textContent = formatFixed(els.speed.value);
   els.similarityOut.textContent = formatFixed(els.similarityBoost.value);
@@ -180,7 +180,6 @@ function setConfigFieldsEnabled(enabled) {
     els.llmSelect,
     els.resetAgentConfigBtn,
     els.resetVoiceBtn,
-    els.voiceVolume,
     els.voiceId,
     els.ttsModelSelect,
     els.stability,
@@ -204,7 +203,7 @@ function clearFormToEmptyState() {
     els.languageSelect.selectedIndex = -1;
     els.llmSelect.selectedIndex = -1;
     els.ttsModelSelect.selectedIndex = -1;
-    els.voiceVolume.value = 0;
+    sessionVoiceVolume = 0;
     els.stability.value = 0;
     els.speed.value = 0.7;
     els.similarityBoost.value = 0;
@@ -230,7 +229,7 @@ function applyLoadedDefaultsToForm() {
     els.firstMessage.value = d.firstMessage || "";
     if (d.llm) ensureSelectOption(els.llmSelect, d.llm, LLM_LABELS[d.llm] || d.llm);
 
-    if (d.voice.volume != null) els.voiceVolume.value = d.voice.volume;
+    if (d.voice.volume != null) sessionVoiceVolume = d.voice.volume;
     els.voiceId.value = d.voice.voiceId || "";
     if (d.voice.modelId) {
       ensureSelectOption(
@@ -258,7 +257,7 @@ function readSessionConfig() {
     firstMessage: els.firstMessage.value.trim(),
     llm: els.llmSelect.value,
     voice: {
-      volume: Number(els.voiceVolume.value),
+      volume: Number(sessionVoiceVolume),
       voiceId: els.voiceId.value.trim(),
       modelId: els.ttsModelSelect.value,
       stability: Number(els.stability.value),
@@ -400,8 +399,6 @@ function setSessionControlsDisabled(disabled) {
     els.llmSelect,
     els.resetAgentConfigBtn,
     els.resetVoiceBtn,
-    // Hidden volume input: value store for onConnect setVolume, not a live UI control.
-    els.voiceVolume,
     els.voiceId,
     els.ttsModelSelect,
     els.stability,
@@ -763,7 +760,7 @@ els.resetAgentConfigBtn.addEventListener("click", () => {
 
 els.resetVoiceBtn.addEventListener("click", () => {
   if (!loadedDefaults) return;
-  if (loadedDefaults.voice.volume != null) els.voiceVolume.value = loadedDefaults.voice.volume;
+  if (loadedDefaults.voice.volume != null) sessionVoiceVolume = loadedDefaults.voice.volume;
   els.voiceId.value = loadedDefaults.voice.voiceId || "";
   if (loadedDefaults.voice.modelId) {
     ensureSelectOption(
@@ -783,7 +780,7 @@ els.resetVoiceBtn.addEventListener("click", () => {
   updateFooters();
 });
 
-for (const range of [els.voiceVolume, els.stability, els.speed, els.similarityBoost]) {
+for (const range of [els.stability, els.speed, els.similarityBoost]) {
   range.addEventListener("input", () => {
     syncRangeOutputs();
     updateFooters();
