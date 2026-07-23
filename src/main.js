@@ -400,6 +400,8 @@ function setSessionControlsDisabled(disabled) {
     els.llmSelect,
     els.resetAgentConfigBtn,
     els.resetVoiceBtn,
+    // Hidden volume input: value store for onConnect setVolume, not a live UI control.
+    els.voiceVolume,
     els.voiceId,
     els.ttsModelSelect,
     els.stability,
@@ -409,8 +411,6 @@ function setSessionControlsDisabled(disabled) {
   for (const el of fields) {
     if (el) el.disabled = disabled;
   }
-  // Volume stays editable live via conversation.setVolume.
-  els.voiceVolume.disabled = false;
 }
 
 function buildCallbacks(cfg) {
@@ -872,15 +872,6 @@ els.confirmModal?.querySelector("[data-close-confirm]")?.addEventListener("click
   closeConfirmModal(false)
 );
 
-els.voiceVolume.addEventListener("change", async () => {
-  if (!conversation?.setVolume) return;
-  try {
-    await conversation.setVolume({ volume: Number(els.voiceVolume.value) });
-  } catch (err) {
-    console.warn(err);
-  }
-});
-
 els.ttsQcGenerateBtn.addEventListener("click", generateTtsQc);
 els.ttsQcStopBtn.addEventListener("click", stopTtsQc);
 els.ttsQcAudio.addEventListener("play", () => {
@@ -892,6 +883,24 @@ els.ttsQcAudio.addEventListener("ended", () => {
 
 els.startBtn.addEventListener("click", startConversation);
 els.stopBtn.addEventListener("click", stopConversation);
+
+const INSTRUCTIONS_DISMISSED_KEY = "productions-review-instructions-dismissed";
+
+function isInstructionsDismissed() {
+  try {
+    return localStorage.getItem(INSTRUCTIONS_DISMISSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function persistInstructionsDismissed() {
+  try {
+    localStorage.setItem(INSTRUCTIONS_DISMISSED_KEY, "1");
+  } catch {
+    // Ignore private mode / quota errors; dismissal still closes the modal.
+  }
+}
 
 function openInstructionsModal() {
   if (!els.instructionsModal) return;
@@ -905,11 +914,18 @@ function openInstructionsModal() {
 function closeInstructionsModal() {
   if (!els.instructionsModal || els.instructionsModal.hidden) return;
   els.instructionsModal.hidden = true;
+  persistInstructionsDismissed();
   if (activeModal === "instructions") {
     activeModal = null;
     setAppBlurred(false);
   }
   els.openInstructionsBtn?.focus();
+}
+
+function maybeOpenInstructionsOnEntry() {
+  if (!isInstructionsDismissed()) {
+    openInstructionsModal();
+  }
 }
 
 els.openInstructionsBtn?.addEventListener("click", openInstructionsModal);
@@ -929,4 +945,4 @@ document.addEventListener("keydown", (event) => {
 });
 
 setConfigFieldsEnabled(false);
-loadAgentConfig();
+loadAgentConfig().finally(maybeOpenInstructionsOnEntry);

@@ -42,7 +42,7 @@ body {
 }
 
 .app {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 1rem clamp(1rem, 2.5vw, 1.5rem) 2.5rem;
 }
@@ -185,19 +185,34 @@ body {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-  gap: 1.25rem 1.5rem;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px) minmax(280px, 320px);
+  gap: 1.25rem 1.25rem;
   align-items: start;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  }
+
+  .workspace-preview {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 800px) {
   .workspace {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-preview {
+    grid-column: auto;
   }
 }
 
 .workspace-main,
-.workspace-rail {
+.workspace-rail,
+.workspace-preview {
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -295,7 +310,7 @@ body {
 
 .prompt-body {
   width: 100%;
-  min-height: 22rem;
+  min-height: min(28rem, calc(100vh - 22rem));
   resize: vertical;
   border: 1px solid var(--stroke);
   border-radius: var(--radius-lg);

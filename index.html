@@ -80,43 +80,6 @@
             </p>
             <textarea id="firstMessage" class="input-textarea" rows="3" spellcheck="true"></textarea>
           </section>
-
-          <section class="editor-card tts-qc-card" aria-labelledby="tts-qc-heading">
-            <div class="editor-card-head">
-              <div class="editor-card-titles">
-                <h2 id="tts-qc-heading">TTS QC</h2>
-                <span class="badge badge-muted">Same voice settings</span>
-              </div>
-            </div>
-            <p class="editor-lead">
-              If a QC reviewer catches a pronunciation issue, regenerate the
-              <strong>same sentence</strong> with the <strong>same voice settings</strong> to check
-              whether it repeats.
-            </p>
-            <div class="tts-qc-body">
-              <div class="field">
-                <label class="field-label" for="ttsQcText">Sentence to regenerate</label>
-                <textarea
-                  id="ttsQcText"
-                  class="input-textarea"
-                  rows="3"
-                  placeholder="Paste the agent sentence that sounded wrong…"
-                  spellcheck="true"
-                ></textarea>
-              </div>
-              <div class="tts-qc-actions">
-                <button type="button" id="ttsQcGenerateBtn" class="btn btn-primary">
-                  Generate &amp; play
-                </button>
-                <button type="button" id="ttsQcStopBtn" class="btn btn-ghost" disabled>Stop</button>
-              </div>
-              <p class="field-hint tight tts-qc-meta" id="ttsQcMeta">
-                Uses current Voice ID, model, stability, speed, and similarity boost.
-              </p>
-              <audio id="ttsQcAudio" controls class="tts-qc-audio" hidden></audio>
-              <p id="ttsQcError" class="error" hidden></p>
-            </div>
-          </section>
         </div>
 
         <aside class="workspace-rail" aria-label="Agent settings">
@@ -132,7 +95,8 @@
               Reset voice to live defaults
             </button>
             <div class="rail-stack">
-              <div class="field">
+              <!-- Volume kept for JS / session setVolume; hidden from review UI -->
+              <div class="field field-volume" hidden>
                 <div class="range-head">
                   <label class="field-label" for="voiceVolume">Volume</label>
                   <output id="voiceVolumeOut" for="voiceVolume">0.80</output>
@@ -247,7 +211,9 @@
             </label>
             <p class="card-model-foot" id="llmFoot">LLM: — · waiting for live config</p>
           </section>
+        </aside>
 
+        <aside class="workspace-preview" aria-label="Preview and TTS QC">
           <section class="rail-section session-rail" aria-labelledby="call-heading">
             <div class="rail-section-head">
               <div>
@@ -319,6 +285,43 @@
 
             <p id="errorBox" class="error" hidden></p>
           </section>
+
+          <section class="editor-card tts-qc-card" aria-labelledby="tts-qc-heading">
+            <div class="editor-card-head">
+              <div class="editor-card-titles">
+                <h2 id="tts-qc-heading">TTS QC</h2>
+                <span class="badge badge-muted">Same voice settings</span>
+              </div>
+            </div>
+            <p class="editor-lead">
+              If a QC reviewer catches a pronunciation issue, regenerate the
+              <strong>same sentence</strong> with the <strong>same voice settings</strong> to check
+              whether it repeats.
+            </p>
+            <div class="tts-qc-body">
+              <div class="field">
+                <label class="field-label" for="ttsQcText">Sentence to regenerate</label>
+                <textarea
+                  id="ttsQcText"
+                  class="input-textarea"
+                  rows="3"
+                  placeholder="Paste the agent sentence that sounded wrong…"
+                  spellcheck="true"
+                ></textarea>
+              </div>
+              <div class="tts-qc-actions">
+                <button type="button" id="ttsQcGenerateBtn" class="btn btn-primary">
+                  Generate &amp; play
+                </button>
+                <button type="button" id="ttsQcStopBtn" class="btn btn-ghost" disabled>Stop</button>
+              </div>
+              <p class="field-hint tight tts-qc-meta" id="ttsQcMeta">
+                Uses current Voice ID, model, stability, speed, and similarity boost.
+              </p>
+              <audio id="ttsQcAudio" controls class="tts-qc-audio" hidden></audio>
+              <p id="ttsQcError" class="error" hidden></p>
+            </div>
+          </section>
         </aside>
       </div>
     </div>
@@ -350,7 +353,7 @@
             from the client agent — adjust only for this session if you need a controlled variant.
           </li>
           <li>
-            Check <strong>voice settings</strong> (volume, voice ID, model, stability, speed, similarity).
+            Check <strong>voice settings</strong> (voice ID, model, stability, speed, similarity).
             Options reflect what the client configured; your edits stay session-only.
           </li>
           <li>
