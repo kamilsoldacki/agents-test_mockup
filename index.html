@@ -41,18 +41,123 @@
         </div>
       </header>
 
-      <div class="page-heading">
-        <div class="page-heading-row">
-          <h1>Agent</h1>
-          <span class="pill">Review</span>
-        </div>
-        <p class="page-sub" id="agentFetchStatus">Loading live agent config…</p>
-      </div>
+      <div class="review-split">
+        <div class="review-split-left">
+          <div class="page-heading">
+            <div class="page-heading-row">
+              <h1>Agent</h1>
+              <span class="pill">Review</span>
+            </div>
+            <p class="page-sub" id="agentFetchStatus">Loading live agent config…</p>
+          </div>
 
-      <p class="session-banner" role="note">
-        All edits on this page apply to the <strong>next session only</strong>. They are never saved
-        back to the client agent.
-      </p>
+          <p class="session-banner" role="note">
+            All edits on this page apply to the <strong>next session only</strong>. They are never
+            saved back to the client agent.
+          </p>
+        </div>
+
+        <aside class="qc-ratings" aria-labelledby="qc-ratings-heading">
+          <details class="qc-legend">
+            <summary class="qc-legend-summary">
+              <h2 id="qc-ratings-heading">QC ratings</h2>
+              <span class="qc-legend-toggle">LEGEND</span>
+            </summary>
+            <div class="qc-legend-body">
+              <p>
+                <strong>Scale</strong> — 1 = needs work, 2 = acceptable, 3 = native-quality
+              </p>
+              <p>
+                <strong>Accent nativeness</strong> — Does this sound like a native speaker of the
+                language you are reviewing?
+              </p>
+              <p>
+                <strong>Pronunciation</strong> — Numbers, prices, dates, proper names and brands
+                (e.g. MyMagenta, Deutsche Telekom) — are they said correctly?
+              </p>
+              <p>
+                <strong>Conversational naturalness</strong> — Intonation, pacing, pauses, sentence
+                endings: does it feel like a real conversation, or flat / tutorial-like?
+              </p>
+              <p>
+                <strong>Voice artifacts / loudness</strong> — Distortion, harsh compression,
+                shouting, fatiguing volume (1 = worst)
+              </p>
+              <p>
+                <strong>Wording / content issue</strong> — Mark YES when the problem is
+                <em>what</em> was said (awkward or wrong phrasing), not <em>how</em> it was spoken.
+                Note a short example.
+              </p>
+              <p>
+                <strong>Comments</strong> — Required for any score of 1: briefly say what went wrong
+                so the team can act on it.
+              </p>
+              <p>
+                <strong>Scope</strong> — Only review languages you are native or fluent in. Run
+                2–3 calls of 5–7 minutes each. Judge delivery and language quality — not factual
+                accuracy; prices and product details are invented on purpose.
+              </p>
+            </div>
+          </details>
+
+          <div class="qc-ratings-grid" role="group" aria-label="Voice quality scores">
+            <fieldset class="qc-score">
+              <legend>Accent nativeness</legend>
+              <div class="qc-score-options">
+                <label><input type="radio" name="qcAccent" value="1" /> 1</label>
+                <label><input type="radio" name="qcAccent" value="2" /> 2</label>
+                <label><input type="radio" name="qcAccent" value="3" /> 3</label>
+              </div>
+            </fieldset>
+            <fieldset class="qc-score">
+              <legend>Pronunciation: numbers/dates/names</legend>
+              <div class="qc-score-options">
+                <label><input type="radio" name="qcPronunciation" value="1" /> 1</label>
+                <label><input type="radio" name="qcPronunciation" value="2" /> 2</label>
+                <label><input type="radio" name="qcPronunciation" value="3" /> 3</label>
+              </div>
+            </fieldset>
+            <fieldset class="qc-score">
+              <legend>Conversational naturalness</legend>
+              <div class="qc-score-options">
+                <label><input type="radio" name="qcNaturalness" value="1" /> 1</label>
+                <label><input type="radio" name="qcNaturalness" value="2" /> 2</label>
+                <label><input type="radio" name="qcNaturalness" value="3" /> 3</label>
+              </div>
+            </fieldset>
+            <fieldset class="qc-score">
+              <legend>Voice artifacts / loudness</legend>
+              <div class="qc-score-options">
+                <label><input type="radio" name="qcArtifacts" value="1" /> 1</label>
+                <label><input type="radio" name="qcArtifacts" value="2" /> 2</label>
+                <label><input type="radio" name="qcArtifacts" value="3" /> 3</label>
+              </div>
+            </fieldset>
+          </div>
+
+          <fieldset class="qc-wording">
+            <legend>Wording / content issue? (phrasing, not voice)</legend>
+            <div class="qc-score-options">
+              <label><input type="radio" name="qcWordingIssue" value="no" checked /> NO</label>
+              <label><input type="radio" name="qcWordingIssue" value="yes" /> YES</label>
+            </div>
+          </fieldset>
+
+          <div class="field qc-comments-field">
+            <label class="field-label" for="qcComments">Comments / examples</label>
+            <textarea
+              id="qcComments"
+              class="input-textarea"
+              rows="2"
+              placeholder="Required when any score is 1 — what went wrong?"
+              spellcheck="true"
+            ></textarea>
+            <p id="qcCommentsHint" class="field-hint qc-comments-hint" hidden>
+              Comments are required when any rating is 1.
+            </p>
+          </div>
+        </aside>
+      </div>
 
       <div class="workspace">
         <div class="workspace-main">
@@ -86,14 +191,16 @@
           <section class="rail-section" aria-labelledby="voice-heading">
             <div class="rail-section-head">
               <div>
-                <h2 id="voice-heading">Voices</h2>
+                <div class="editor-card-titles">
+                  <h2 id="voice-heading">Voices</h2>
+                  <span class="badge badge-muted" id="voiceConfigBadge">…</span>
+                </div>
                 <p class="rail-desc">Select the ElevenLabs voices you want to use for the agent.</p>
               </div>
-              <span class="badge badge-muted" id="voiceConfigBadge">…</span>
+              <button type="button" id="resetVoiceBtn" class="btn-link">
+                Reset voice to live defaults
+              </button>
             </div>
-            <button type="button" id="resetVoiceBtn" class="btn-link rail-reset">
-              Reset voice to live defaults
-            </button>
             <div class="rail-stack">
               <div class="field">
                 <label class="field-label" for="voiceId">Voice ID</label>
@@ -205,7 +312,7 @@
           </section>
         </aside>
 
-        <aside class="workspace-preview" aria-label="Preview and TTS QC">
+        <aside class="workspace-preview" aria-label="Preview and sentence replay">
           <section class="rail-section session-rail" aria-labelledby="call-heading">
             <div class="rail-section-head">
               <div>
@@ -281,34 +388,34 @@
           <section class="editor-card tts-qc-card" aria-labelledby="tts-qc-heading">
             <div class="editor-card-head">
               <div class="editor-card-titles">
-                <h2 id="tts-qc-heading">TTS QC</h2>
-                <span class="badge badge-muted">Same voice settings</span>
+                <h2 id="tts-qc-heading">Replay a sentence</h2>
+                <span class="badge badge-muted">Same voice as the call</span>
               </div>
             </div>
             <p class="editor-lead">
-              If a QC reviewer catches a pronunciation issue, regenerate the
-              <strong>same sentence</strong> with the <strong>same voice settings</strong> to check
-              whether it repeats.
+              Heard a mispronunciation? Paste the <strong>exact sentence</strong> and play it again.
+              If the same mistake comes back, note it in your comments — that confirms a consistent
+              issue, not a one-off slip.
             </p>
             <div class="tts-qc-body">
               <div class="field">
-                <label class="field-label" for="ttsQcText">Sentence to regenerate</label>
+                <label class="field-label" for="ttsQcText">Sentence to check</label>
                 <textarea
                   id="ttsQcText"
                   class="input-textarea"
                   rows="3"
-                  placeholder="Paste the agent sentence that sounded wrong…"
+                  placeholder="Paste the sentence that sounded wrong…"
                   spellcheck="true"
                 ></textarea>
               </div>
               <div class="tts-qc-actions">
                 <button type="button" id="ttsQcGenerateBtn" class="btn btn-primary">
-                  Generate &amp; play
+                  Play sentence
                 </button>
                 <button type="button" id="ttsQcStopBtn" class="btn btn-ghost" disabled>Stop</button>
               </div>
               <p class="field-hint tight tts-qc-meta" id="ttsQcMeta">
-                Uses current Voice ID, model, stability, speed, and similarity boost.
+                Plays with the same voice used in the call.
               </p>
               <audio id="ttsQcAudio" controls class="tts-qc-audio" hidden></audio>
               <p id="ttsQcError" class="error" hidden></p>
@@ -329,7 +436,7 @@
       <div class="modal-backdrop" data-close-instructions tabindex="-1"></div>
       <div class="modal-panel instructions" role="document">
         <div class="modal-head">
-          <h2 id="instructions-heading">How Productions runs a review</h2>
+          <h2 id="instructions-heading">How to review</h2>
           <button
             type="button"
             id="closeInstructionsBtn"
@@ -341,23 +448,26 @@
         </div>
         <ol>
           <li>
-            Review the <strong>system prompt, first message, language, and LLM</strong> loaded live
-            from the client agent — adjust only for this session if you need a controlled variant.
+            Confirm you are reviewing a language you are <strong>native or fluent</strong> in — the
+            language assigned for this QC.
           </li>
           <li>
-            Check <strong>voice settings</strong> (voice ID, model, stability, speed, similarity).
-            Options reflect what the client configured; your edits stay session-only.
+            Open the legend next to the scores so the rating scale is clear, then start a call and
+            speak with the agent as a customer would.
           </li>
           <li>
-            Start a call and speak with the agent using the live session overrides from this page.
+            Run <strong>2–3 calls of 5–7 minutes</strong> each. Score accent, pronunciation,
+            naturalness, and artifacts after each call. Judge how it sounds — not whether prices or
+            product details are factually correct (those are invented on purpose).
           </li>
           <li>
-            For pronunciation QC, paste the same sentence into the <strong>TTS QC</strong> box and
-            regenerate with the current voice settings to see if the issue repeats.
+            If something is mispronounced, paste that exact sentence under
+            <strong>Replay a sentence</strong> and play it again. Note whether the same mistake
+            returns.
           </li>
           <li>
-            Capture remarks for the client (aliases, wording, voice settings) — nothing here writes
-            back to the agent.
+            Mark <strong>Wording / content issue</strong> when the phrasing itself is odd or wrong
+            (not the pronunciation). Leave a short comment whenever you score a 1.
           </li>
         </ol>
         <div class="modal-actions">

@@ -41,6 +41,15 @@ const TTS_LABELS = {
   eleven_multilingual_v2: "Eleven Multilingual v2",
 };
 
+/** Agents-only models have no standalone TTS API — map to the closest HTTP TTS model. */
+const TTS_QC_MODEL_FALLBACK = {
+  eleven_v3_conversational: "eleven_v3",
+};
+
+function resolveTtsQcModelId(modelId) {
+  return TTS_QC_MODEL_FALLBACK[modelId] || modelId;
+}
+
 const els = {
   languageSelect: document.getElementById("languageSelect"),
   systemPrompt: document.getElementById("systemPrompt"),
@@ -75,6 +84,9 @@ const els = {
   ttsQcAudio: document.getElementById("ttsQcAudio"),
   ttsQcError: document.getElementById("ttsQcError"),
   ttsQcMeta: document.getElementById("ttsQcMeta"),
+  qcComments: document.getElementById("qcComments"),
+  qcCommentsHint: document.getElementById("qcCommentsHint"),
+  qcCommentsField: document.querySelector(".qc-comments-field"),
   instructionsModal: document.getElementById("instructionsModal"),
   openInstructionsBtn: document.getElementById("openInstructionsBtn"),
   closeInstructionsBtn: document.getElementById("closeInstructionsBtn"),
@@ -165,11 +177,9 @@ function updateFooters() {
   els.ttsFoot.textContent = tts
     ? `${TTS_LABELS[tts] || tts} · session voice settings`
     : "TTS: — · waiting for live config";
-  els.ttsQcMeta.textContent = `Uses Voice ID “${els.voiceId.value || "—"}”, model ${
-    TTS_LABELS[tts] || tts || "—"
-  }, stability ${formatFixed(els.stability.value)}, speed ${formatFixed(
-    els.speed.value
-  )}, similarity ${formatFixed(els.similarityBoost.value)}.`;
+  els.ttsQcMeta.textContent = liveConfigLoaded
+    ? "Plays with the same voice used in the call."
+    : "Waiting for call setup…";
 }
 
 function setConfigFieldsEnabled(enabled) {
@@ -664,22 +674,22 @@ async function generateTtsQc() {
   showTtsQcError(null);
   const text = els.ttsQcText.value.trim();
   if (!text) {
-    showTtsQcError("Paste a sentence to regenerate.");
+    showTtsQcError("Paste the sentence you want to hear again.");
     return;
   }
 
   if (!liveConfigLoaded) {
-    showTtsQcError("Load live agent config before running TTS QC.");
+    showTtsQcError("Call setup isn’t ready yet — wait a moment, then try again.");
     return;
   }
 
   const cfg = readSessionConfig();
   if (!cfg.voice.voiceId) {
-    showTtsQcError("Voice ID is empty — check live agent TTS settings.");
+    showTtsQcError("Voice isn’t set up yet — ask the person who shared this page.");
     return;
   }
   if (!cfg.voice.modelId) {
-    showTtsQcError("TTS model is empty — check live agent TTS settings.");
+    showTtsQcError("Voice isn’t set up yet — ask the person who shared this page.");
     return;
   }
 
@@ -693,7 +703,7 @@ async function generateTtsQc() {
       body: JSON.stringify({
         text,
         voiceId: cfg.voice.voiceId,
-        modelId: cfg.voice.modelId,
+        modelId: resolveTtsQcModelId(cfg.voice.modelId),
         stability: cfg.voice.stability,
         speed: cfg.voice.speed,
         similarityBoost: cfg.voice.similarityBoost,
@@ -880,6 +890,106 @@ els.ttsQcAudio.addEventListener("ended", () => {
 
 els.startBtn.addEventListener("click", startConversation);
 els.stopBtn.addEventListener("click", stopConversation);
+
+const QC_CACHE_KEY = `productions-qc-ratings:${AGENT_ID}`;
+const QC_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const QC_SCORE_NAMES = ["qcAccent", "qcPronunciation", "qcNaturalness", "qcArtifacts"];
+
+function getCheckedRadioValue(name) {
+  const checked = document.querySelector(`input[name="${name}"]:checked`);
+  return checked ? checked.value : "";
+}
+
+function setCheckedRadioValue(name, value) {
+  if (!value) return;
+  const input = document.querySelector(`input[name="${name}"][value="${value}"]`);
+  if (input) input.checked = true;
+}
+
+function readQcFormState() {
+  return {
+    accent: getCheckedRadioValue("qcAccent"),
+    pronunciation: getCheckedRadioValue("qcPronunciation"),
+    naturalness: getCheckedRadioValue("qcNaturalness"),
+    artifacts: getCheckedRadioValue("qcArtifacts"),
+    wordingIssue: getCheckedRadioValue("qcWordingIssue") || "no",
+    comments: (els.qcComments?.value || "").trim(),
+  };
+}
+
+function applyQcFormState(state) {
+  if (!state) return;
+  setCheckedRadioValue("qcAccent", state.accent);
+  setCheckedRadioValue("qcPronunciation", state.pronunciation);
+  setCheckedRadioValue("qcNaturalness", state.naturalness);
+  setCheckedRadioValue("qcArtifacts", state.artifacts);
+  setCheckedRadioValue("qcWordingIssue", state.wordingIssue || "no");
+  if (els.qcComments) els.qcComments.value = state.comments || "";
+}
+
+function hasAnyScoreOfOne(state = readQcFormState()) {
+  return [state.accent, state.pronunciation, state.naturalness, state.artifacts].includes("1");
+}
+
+function validateQcCommentsRequired() {
+  const needsComments = hasAnyScoreOfOne();
+  const comments = (els.qcComments?.value || "").trim();
+  const invalid = needsComments && !comments;
+  if (els.qcCommentsHint) els.qcCommentsHint.hidden = !invalid;
+  els.qcCommentsField?.classList.toggle("is-invalid", invalid);
+  if (els.qcComments) {
+    els.qcComments.setAttribute("aria-invalid", invalid ? "true" : "false");
+    els.qcComments.required = needsComments;
+  }
+  return !invalid;
+}
+
+function persistQcRatings() {
+  try {
+    const payload = {
+      savedAt: Date.now(),
+      ...readQcFormState(),
+    };
+    localStorage.setItem(QC_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore private mode / quota errors.
+  }
+}
+
+function restoreQcRatings() {
+  try {
+    const raw = localStorage.getItem(QC_CACHE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return;
+    const age = Date.now() - Number(parsed.savedAt || 0);
+    if (!Number.isFinite(age) || age < 0 || age > QC_CACHE_TTL_MS) {
+      localStorage.removeItem(QC_CACHE_KEY);
+      return;
+    }
+    applyQcFormState(parsed);
+  } catch {
+    // Ignore corrupt cache.
+  }
+}
+
+function onQcFormChange() {
+  validateQcCommentsRequired();
+  persistQcRatings();
+}
+
+for (const name of QC_SCORE_NAMES) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+    input.addEventListener("change", onQcFormChange);
+  });
+}
+document.querySelectorAll('input[name="qcWordingIssue"]').forEach((input) => {
+  input.addEventListener("change", onQcFormChange);
+});
+els.qcComments?.addEventListener("input", onQcFormChange);
+
+restoreQcRatings();
+validateQcCommentsRequired();
 
 const INSTRUCTIONS_DISMISSED_KEY = "productions-review-instructions-dismissed";
 

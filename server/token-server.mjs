@@ -145,6 +145,15 @@ app.get("/api/agent-config", async (req, res) => {
   }
 });
 
+/** Agents-only models have no standalone TTS API — map to the closest HTTP TTS model. */
+const TTS_QC_MODEL_FALLBACK = {
+  eleven_v3_conversational: "eleven_v3",
+};
+
+function resolveTtsQcModelId(modelId) {
+  return TTS_QC_MODEL_FALLBACK[modelId] || modelId;
+}
+
 /**
  * TTS QC: regenerate a sentence with the voice settings currently shown in the UI.
  * POST { text, voiceId, modelId, stability, speed, similarityBoost }
@@ -179,6 +188,8 @@ app.post("/api/tts", async (req, res) => {
     return res.status(400).json({ error: "Missing or invalid similarityBoost" });
   }
 
+  const ttsModelId = resolveTtsQcModelId(modelId);
+
   try {
     const url = new URL(`${API_ORIGIN}/v1/text-to-speech/${encodeURIComponent(voiceId)}`);
     url.searchParams.set("output_format", "mp3_44100_128");
@@ -192,7 +203,7 @@ app.post("/api/tts", async (req, res) => {
       },
       body: JSON.stringify({
         text,
-        model_id: modelId,
+        model_id: ttsModelId,
         voice_settings: {
           stability: Number(stability),
           similarity_boost: Number(similarityBoost),
