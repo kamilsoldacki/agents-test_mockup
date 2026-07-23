@@ -22,6 +22,20 @@ const API_ORIGIN =
 
 app.use(express.json({ limit: "1mb" }));
 
+/**
+ * CORS for cross-origin clients (e.g. GitHub Pages → Render via VITE_API_BASE).
+ * Client fetch uses default credentials (omit), so * is safe. Never reflects secrets.
+ */
+app.use("/api", (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
+
 function apiHeaders() {
   const headers = {};
   if (process.env.XI_API_KEY) {

@@ -66,21 +66,9 @@ const els = {
   speedOut: document.getElementById("speedOut"),
   similarityBoost: document.getElementById("similarityBoost"),
   similarityOut: document.getElementById("similarityOut"),
-  textInputEnabled: document.getElementById("textInputEnabled"),
-  conversationModeToggleEnabled: document.getElementById("conversationModeToggleEnabled"),
-  modeToggleWrap: document.getElementById("modeToggleWrap"),
-  modeVoiceBtn: document.getElementById("modeVoiceBtn"),
-  modeTextBtn: document.getElementById("modeTextBtn"),
-  chatPanel: document.getElementById("chatPanel"),
-  chatLog: document.getElementById("chatLog"),
-  chatForm: document.getElementById("chatForm"),
-  chatInput: document.getElementById("chatInput"),
-  chatSendBtn: document.getElementById("chatSendBtn"),
-  chatModeBadge: document.getElementById("chatModeBadge"),
   agentFetchStatus: document.getElementById("agentFetchStatus"),
   agentConfigBadge: document.getElementById("agentConfigBadge"),
   voiceConfigBadge: document.getElementById("voiceConfigBadge"),
-  widgetConfigBadge: document.getElementById("widgetConfigBadge"),
   llmFoot: document.getElementById("llmFoot"),
   ttsFoot: document.getElementById("ttsFoot"),
   ttsQcText: document.getElementById("ttsQcText"),
@@ -89,16 +77,46 @@ const els = {
   ttsQcAudio: document.getElementById("ttsQcAudio"),
   ttsQcError: document.getElementById("ttsQcError"),
   ttsQcMeta: document.getElementById("ttsQcMeta"),
+  instructionsModal: document.getElementById("instructionsModal"),
+  openInstructionsBtn: document.getElementById("openInstructionsBtn"),
+  closeInstructionsBtn: document.getElementById("closeInstructionsBtn"),
+  dismissInstructionsBtn: document.getElementById("dismissInstructionsBtn"),
+  confirmModal: document.getElementById("confirmModal"),
+  confirmMessage: document.getElementById("confirmMessage"),
+  confirmOkBtn: document.getElementById("confirmOkBtn"),
+  confirmCancelBtn: document.getElementById("confirmCancelBtn"),
+  confirmCloseBtn: document.getElementById("confirmCloseBtn"),
 };
 
 let conversation = null;
-let preferredConversationMode = "voice"; // voice | text
 let ttsObjectUrl = null;
 let liveConfigLoaded = false;
 
 /** Live defaults from last successful /api/agent-config fetch — used by Reset buttons. */
 let loadedDefaults = null;
-let configSource = { agent: "loading", voice: "loading", widget: "loading" };
+let configSource = { agent: "loading", voice: "loading" };
+
+const committedClientChoices = {
+  language: "",
+  llm: "",
+};
+
+function syncCommittedClientChoices() {
+  committedClientChoices.language = els.languageSelect.value;
+  committedClientChoices.llm = els.llmSelect.value;
+}
+
+/** Suppress Language/LLM confirmation while applying programmatic select updates. */
+let suppressClientChoiceGuard = false;
+
+function withSuppressedClientChoiceGuard(fn) {
+  suppressClientChoiceGuard = true;
+  try {
+    fn();
+  } finally {
+    suppressClientChoiceGuard = false;
+  }
+}
 
 function ensureSelectOption(select, value, label = value) {
   if (!value) return;
@@ -168,8 +186,6 @@ function setConfigFieldsEnabled(enabled) {
     els.stability,
     els.speed,
     els.similarityBoost,
-    els.textInputEnabled,
-    els.conversationModeToggleEnabled,
     els.ttsQcGenerateBtn,
     els.ttsQcText,
   ];
@@ -180,22 +196,22 @@ function setConfigFieldsEnabled(enabled) {
 }
 
 function clearFormToEmptyState() {
-  els.systemPrompt.value = "";
-  els.systemPrompt.defaultValue = "";
-  els.firstMessage.value = "";
-  els.voiceId.value = "";
-  els.languageSelect.selectedIndex = -1;
-  els.llmSelect.selectedIndex = -1;
-  els.ttsModelSelect.selectedIndex = -1;
-  els.voiceVolume.value = 0;
-  els.stability.value = 0;
-  els.speed.value = 0.7;
-  els.similarityBoost.value = 0;
-  els.textInputEnabled.checked = false;
-  els.conversationModeToggleEnabled.checked = false;
+  withSuppressedClientChoiceGuard(() => {
+    els.systemPrompt.value = "";
+    els.systemPrompt.defaultValue = "";
+    els.firstMessage.value = "";
+    els.voiceId.value = "";
+    els.languageSelect.selectedIndex = -1;
+    els.llmSelect.selectedIndex = -1;
+    els.ttsModelSelect.selectedIndex = -1;
+    els.voiceVolume.value = 0;
+    els.stability.value = 0;
+    els.speed.value = 0.7;
+    els.similarityBoost.value = 0;
+  });
   syncRangeOutputs();
   updateFooters();
-  syncMultimodalUi();
+  syncCommittedClientChoices();
 }
 
 function applyLoadedDefaultsToForm() {
@@ -203,102 +219,36 @@ function applyLoadedDefaultsToForm() {
     clearFormToEmptyState();
     setBadge(els.agentConfigBadge, configSource.agent);
     setBadge(els.voiceConfigBadge, configSource.voice);
-    setBadge(els.widgetConfigBadge, configSource.widget);
     return;
   }
 
   const d = loadedDefaults;
-  if (d.language) ensureSelectOption(els.languageSelect, d.language);
-  els.systemPrompt.defaultValue = d.prompt || "";
-  els.systemPrompt.value = els.systemPrompt.defaultValue;
-  els.firstMessage.value = d.firstMessage || "";
-  if (d.llm) ensureSelectOption(els.llmSelect, d.llm, LLM_LABELS[d.llm] || d.llm);
+  withSuppressedClientChoiceGuard(() => {
+    if (d.language) ensureSelectOption(els.languageSelect, d.language);
+    els.systemPrompt.defaultValue = d.prompt || "";
+    els.systemPrompt.value = els.systemPrompt.defaultValue;
+    els.firstMessage.value = d.firstMessage || "";
+    if (d.llm) ensureSelectOption(els.llmSelect, d.llm, LLM_LABELS[d.llm] || d.llm);
 
-  if (d.voice.volume != null) els.voiceVolume.value = d.voice.volume;
-  els.voiceId.value = d.voice.voiceId || "";
-  if (d.voice.modelId) {
-    ensureSelectOption(
-      els.ttsModelSelect,
-      d.voice.modelId,
-      TTS_LABELS[d.voice.modelId] || d.voice.modelId
-    );
-  }
-  if (d.voice.stability != null) els.stability.value = d.voice.stability;
-  if (d.voice.speed != null) els.speed.value = d.voice.speed;
-  if (d.voice.similarityBoost != null) els.similarityBoost.value = d.voice.similarityBoost;
-
-  if (d.widget.textInputEnabled != null) {
-    els.textInputEnabled.checked = Boolean(d.widget.textInputEnabled);
-  }
-  if (d.widget.conversationModeToggleEnabled != null) {
-    els.conversationModeToggleEnabled.checked = Boolean(d.widget.conversationModeToggleEnabled);
-  }
+    if (d.voice.volume != null) els.voiceVolume.value = d.voice.volume;
+    els.voiceId.value = d.voice.voiceId || "";
+    if (d.voice.modelId) {
+      ensureSelectOption(
+        els.ttsModelSelect,
+        d.voice.modelId,
+        TTS_LABELS[d.voice.modelId] || d.voice.modelId
+      );
+    }
+    if (d.voice.stability != null) els.stability.value = d.voice.stability;
+    if (d.voice.speed != null) els.speed.value = d.voice.speed;
+    if (d.voice.similarityBoost != null) els.similarityBoost.value = d.voice.similarityBoost;
+  });
 
   syncRangeOutputs();
   updateFooters();
-  syncMultimodalUi();
+  syncCommittedClientChoices();
   setBadge(els.agentConfigBadge, configSource.agent);
   setBadge(els.voiceConfigBadge, configSource.voice);
-  setBadge(els.widgetConfigBadge, configSource.widget);
-}
-
-function syncMultimodalUi() {
-  const textOn = els.textInputEnabled.checked;
-  const toggleOn = els.conversationModeToggleEnabled.checked;
-
-  els.modeToggleWrap.hidden = !toggleOn;
-  els.chatPanel.hidden = !textOn && preferredConversationMode !== "text";
-
-  if (!toggleOn) {
-    preferredConversationMode = "voice";
-  }
-
-  els.modeVoiceBtn.classList.toggle("is-active", preferredConversationMode === "voice");
-  els.modeTextBtn.classList.toggle("is-active", preferredConversationMode === "text");
-
-  const live = Boolean(conversation);
-  const textOnlySession = preferredConversationMode === "text";
-  els.chatModeBadge.textContent = textOnlySession
-    ? "Text only"
-    : textOn
-      ? "Voice + text"
-      : "Voice only";
-
-  const canType = live && (textOn || textOnlySession);
-  els.chatInput.disabled = !canType;
-  els.chatSendBtn.disabled = !canType;
-
-  if (!textOn && preferredConversationMode !== "text") {
-    clearChatLog("Enable text input to use multimodal chat.");
-  } else if (!els.chatLog.querySelector(".chat-bubble") && !els.chatLog.querySelector(".chat-empty")) {
-    clearChatLog("Messages appear here during the session.");
-  }
-}
-
-function clearChatLog(emptyText = "Messages appear here during the session.") {
-  els.chatLog.innerHTML = "";
-  const empty = document.createElement("p");
-  empty.className = "chat-empty";
-  empty.textContent = emptyText;
-  els.chatLog.appendChild(empty);
-}
-
-function appendChatMessage(role, text) {
-  if (!text) return;
-  const empty = els.chatLog.querySelector(".chat-empty");
-  if (empty) empty.remove();
-
-  const bubble = document.createElement("div");
-  bubble.className = "chat-bubble";
-  bubble.dataset.role = role;
-  const roleEl = document.createElement("span");
-  roleEl.className = "chat-role";
-  roleEl.textContent = role === "user" ? "You" : "Agent";
-  const body = document.createElement("div");
-  body.textContent = text;
-  bubble.append(roleEl, body);
-  els.chatLog.appendChild(bubble);
-  els.chatLog.scrollTop = els.chatLog.scrollHeight;
 }
 
 function readSessionConfig() {
@@ -315,9 +265,6 @@ function readSessionConfig() {
       speed: Number(els.speed.value),
       similarityBoost: Number(els.similarityBoost.value),
     },
-    textInputEnabled: els.textInputEnabled.checked,
-    conversationModeToggleEnabled: els.conversationModeToggleEnabled.checked,
-    textOnly: preferredConversationMode === "text",
   };
 }
 
@@ -331,7 +278,6 @@ function buildOverrides(cfg) {
       language: cfg.language,
     },
     tts: {},
-    conversation: {},
   };
 
   const promptText = cfg.prompt.trim();
@@ -350,12 +296,8 @@ function buildOverrides(cfg) {
   if (Number.isFinite(cfg.voice.similarityBoost)) {
     overrides.tts.similarityBoost = cfg.voice.similarityBoost;
   }
-  if (cfg.textOnly) {
-    overrides.conversation.textOnly = true;
-  }
 
   if (!Object.keys(overrides.tts).length) delete overrides.tts;
-  if (!Object.keys(overrides.conversation).length) delete overrides.conversation;
 
   return overrides;
 }
@@ -463,10 +405,6 @@ function setSessionControlsDisabled(disabled) {
     els.stability,
     els.speed,
     els.similarityBoost,
-    els.textInputEnabled,
-    els.conversationModeToggleEnabled,
-    els.modeVoiceBtn,
-    els.modeTextBtn,
   ];
   for (const el of fields) {
     if (el) el.disabled = disabled;
@@ -482,7 +420,6 @@ function buildCallbacks(cfg) {
       els.stopBtn.disabled = false;
       setSessionControlsDisabled(true);
       setCallUi("active", cfg);
-      syncMultimodalUi();
       try {
         if (conversation?.setVolume) {
           await conversation.setVolume({ volume: cfg.voice.volume });
@@ -500,7 +437,6 @@ function buildCallbacks(cfg) {
       if (!liveConfigLoaded) setConfigFieldsEnabled(false);
       conversation = null;
       setCallUi("idle", cfg);
-      syncMultimodalUi();
     },
     onError: (err) => {
       console.error(err);
@@ -511,15 +447,9 @@ function buildCallbacks(cfg) {
       if (els.callSurface?.dataset.state === "active" && els.modeLine) {
         els.modeLine.textContent =
           mode === "speaking"
-            ? "Agent is speaking — wait for your turn (or type if text input is on)."
-            : "Listening — talk or type.";
+            ? "Agent is speaking — wait for your turn."
+            : "Listening — speak when ready.";
       }
-    },
-    onMessage: ({ message, source }) => {
-      const text = typeof message === "string" ? message : message?.message || message?.text;
-      if (!text) return;
-      const role = source === "user" || message?.role === "user" ? "user" : "agent";
-      appendChatMessage(role, text);
     },
   };
 }
@@ -532,19 +462,13 @@ function setCallUi(state, cfg = readSessionConfig()) {
     els.callLabel.textContent = liveConfigLoaded ? "Ready to connect" : "Waiting for live config";
     els.modeLine.textContent = !liveConfigLoaded
       ? "Load agent settings from ElevenLabs before starting a session."
-      : cfg.textOnly
-        ? "Text-only session — microphone will not be requested."
-        : "Microphone access is requested when you start.";
+      : "Microphone access is requested when you start.";
   } else if (state === "connecting") {
     els.callLabel.textContent = "Connecting…";
-    els.modeLine.textContent = cfg.textOnly
-      ? "Starting text session…"
-      : "Grant microphone access if the browser asks.";
+    els.modeLine.textContent = "Grant microphone access if the browser asks.";
   } else if (state === "active") {
     els.callLabel.textContent = "Live session";
-    els.modeLine.textContent = cfg.textOnly
-      ? "Text mode — type below. Agent replies in chat (and audio if not text-only)."
-      : "Speak naturally — session overrides from the left apply now.";
+    els.modeLine.textContent = "Speak naturally — session overrides from this page apply now.";
   }
 }
 
@@ -583,26 +507,17 @@ function mapAgentPayload(agent, widget) {
       speed: toNum(tts.speed),
       similarityBoost: toNum(tts.similarity_boost),
     },
-    widget: {
-      textInputEnabled:
-        widgetCfg.text_input_enabled == null ? null : Boolean(widgetCfg.text_input_enabled),
-      conversationModeToggleEnabled:
-        widgetCfg.conversation_mode_toggle_enabled == null
-          ? null
-          : Boolean(widgetCfg.conversation_mode_toggle_enabled),
-    },
   };
 }
 
 function markConfigUnavailable(reason) {
   liveConfigLoaded = false;
   loadedDefaults = null;
-  configSource = { agent: "error", voice: "error", widget: "error" };
+  configSource = { agent: "error", voice: "error" };
   clearFormToEmptyState();
   setConfigFieldsEnabled(false);
   setBadge(els.agentConfigBadge, "error");
   setBadge(els.voiceConfigBadge, "error");
-  setBadge(els.widgetConfigBadge, "error");
   els.agentFetchStatus.textContent = `Could not load live settings: ${reason}`;
   setCallUi("idle");
   showError(
@@ -613,10 +528,9 @@ function markConfigUnavailable(reason) {
 async function loadAgentConfig() {
   liveConfigLoaded = false;
   loadedDefaults = null;
-  configSource = { agent: "loading", voice: "loading", widget: "loading" };
+  configSource = { agent: "loading", voice: "loading" };
   setBadge(els.agentConfigBadge, "loading");
   setBadge(els.voiceConfigBadge, "loading");
-  setBadge(els.widgetConfigBadge, "loading");
   setConfigFieldsEnabled(false);
   clearFormToEmptyState();
   els.agentFetchStatus.textContent = "Loading live agent config…";
@@ -643,7 +557,6 @@ async function loadAgentConfig() {
     configSource = {
       agent: "live",
       voice: data.agent?.conversation_config?.tts ? "live" : "error",
-      widget: data.widget ? "live" : "error",
     };
     applyLoadedDefaultsToForm();
     setConfigFieldsEnabled(true);
@@ -674,16 +587,13 @@ async function startConversation() {
   }
 
   els.startBtn.disabled = true;
-  clearChatLog(cfg.textInputEnabled || cfg.textOnly ? "Connecting…" : "Voice-only session.");
   setCallUi("connecting", cfg);
-  syncMultimodalUi();
 
   try {
     // Session-only: overrides are passed to startSession and never written back to the agent.
     const overrides = buildOverrides(cfg);
     const callbacks = buildCallbacks(cfg);
     const residency = { origin: API_ORIGIN, livekitUrl: LIVEKIT_URL };
-    const textOnly = Boolean(cfg.textOnly);
 
     if (shouldUseTokenServer()) {
       const conversationToken = await fetchConversationTokenFromDevServer();
@@ -691,7 +601,6 @@ async function startConversation() {
         conversationToken,
         ...residency,
         overrides,
-        textOnly,
         ...callbacks,
       });
       return;
@@ -703,7 +612,6 @@ async function startConversation() {
         connectionType: "websocket",
         ...residency,
         overrides,
-        textOnly,
         ...callbacks,
       });
       return;
@@ -714,7 +622,6 @@ async function startConversation() {
         agentId: AGENT_ID,
         ...residency,
         overrides,
-        textOnly,
         ...callbacks,
       });
       return;
@@ -728,7 +635,6 @@ async function startConversation() {
         connectionType: "websocket",
         ...residency,
         overrides,
-        textOnly,
         ...callbacks,
       });
       return;
@@ -739,7 +645,6 @@ async function startConversation() {
       conversationToken,
       ...residency,
       overrides,
-      textOnly,
       ...callbacks,
     });
   } catch (e) {
@@ -748,7 +653,6 @@ async function startConversation() {
     els.startBtn.disabled = !liveConfigLoaded;
     els.stopBtn.disabled = true;
     setCallUi("idle", cfg);
-    syncMultimodalUi();
   }
 }
 
@@ -838,19 +742,22 @@ function stopTtsQc() {
 // —— UI wiring ——
 els.resetAgentConfigBtn.addEventListener("click", () => {
   if (!loadedDefaults) return;
-  if (loadedDefaults.language) {
-    ensureSelectOption(els.languageSelect, loadedDefaults.language);
-  }
-  if (loadedDefaults.llm) {
-    ensureSelectOption(
-      els.llmSelect,
-      loadedDefaults.llm,
-      LLM_LABELS[loadedDefaults.llm] || loadedDefaults.llm
-    );
-  }
-  els.systemPrompt.defaultValue = loadedDefaults.prompt || "";
-  els.systemPrompt.value = els.systemPrompt.defaultValue;
-  els.firstMessage.value = loadedDefaults.firstMessage || "";
+  withSuppressedClientChoiceGuard(() => {
+    if (loadedDefaults.language) {
+      ensureSelectOption(els.languageSelect, loadedDefaults.language);
+    }
+    if (loadedDefaults.llm) {
+      ensureSelectOption(
+        els.llmSelect,
+        loadedDefaults.llm,
+        LLM_LABELS[loadedDefaults.llm] || loadedDefaults.llm
+      );
+    }
+    els.systemPrompt.defaultValue = loadedDefaults.prompt || "";
+    els.systemPrompt.value = els.systemPrompt.defaultValue;
+    els.firstMessage.value = loadedDefaults.firstMessage || "";
+  });
+  syncCommittedClientChoices();
   updateFooters();
 });
 
@@ -885,42 +792,85 @@ for (const range of [els.voiceVolume, els.stability, els.speed, els.similarityBo
 
 els.voiceId.addEventListener("input", updateFooters);
 els.ttsModelSelect.addEventListener("change", updateFooters);
-els.llmSelect.addEventListener("change", updateFooters);
 
-els.textInputEnabled.addEventListener("change", syncMultimodalUi);
-els.conversationModeToggleEnabled.addEventListener("change", syncMultimodalUi);
+let confirmResolver = null;
+let activeModal = null;
 
-els.modeVoiceBtn.addEventListener("click", () => {
-  preferredConversationMode = "voice";
-  syncMultimodalUi();
-  setCallUi(els.callSurface.dataset.state || "idle");
-});
-els.modeTextBtn.addEventListener("click", () => {
-  preferredConversationMode = "text";
-  syncMultimodalUi();
-  setCallUi(els.callSurface.dataset.state || "idle");
-});
+function setAppBlurred(open) {
+  document.body.classList.toggle("modal-open", open);
+}
 
-els.chatForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const text = els.chatInput.value.trim();
-  if (!text || !conversation) return;
-  try {
-    conversation.sendUserMessage(text);
-    appendChatMessage("user", text);
-    els.chatInput.value = "";
-  } catch (err) {
-    showError(err instanceof Error ? err.message : String(err));
+function closeConfirmModal(result) {
+  if (!els.confirmModal || els.confirmModal.hidden) return;
+  els.confirmModal.hidden = true;
+  if (activeModal === "confirm") {
+    activeModal = null;
+    setAppBlurred(false);
   }
-});
+  const resolve = confirmResolver;
+  confirmResolver = null;
+  resolve?.(result);
+}
 
-els.chatInput.addEventListener("input", () => {
-  try {
-    conversation?.sendUserActivity?.();
-  } catch {
-    /* ignore */
-  }
-});
+function askClientChoiceConfirm(fieldLabel) {
+  return new Promise((resolve) => {
+    if (!els.confirmModal) {
+      resolve(
+        window.confirm(
+          `${fieldLabel} is set by the client. Change it for this session only?`
+        )
+      );
+      return;
+    }
+    if (confirmResolver) {
+      confirmResolver(false);
+      confirmResolver = null;
+    }
+    confirmResolver = resolve;
+    els.confirmMessage.textContent = `${fieldLabel} comes from the client agent. Changing it only affects the next session on this page — nothing is saved back to the agent. Continue?`;
+    els.confirmModal.hidden = false;
+    activeModal = "confirm";
+    setAppBlurred(true);
+    els.confirmCancelBtn?.focus();
+  });
+}
+
+function guardClientChoiceSelect(select, fieldKey, fieldLabel) {
+  select.addEventListener("change", async () => {
+    if (suppressClientChoiceGuard) {
+      updateFooters();
+      return;
+    }
+    const next = select.value;
+    if (next === committedClientChoices[fieldKey]) {
+      updateFooters();
+      return;
+    }
+    const ok = await askClientChoiceConfirm(fieldLabel);
+    if (!ok) {
+      // Revert only if still on this pending value; a newer change may have moved it.
+      if (select.value === next) {
+        withSuppressedClientChoiceGuard(() => {
+          select.value = committedClientChoices[fieldKey];
+        });
+      }
+      updateFooters();
+      return;
+    }
+    committedClientChoices[fieldKey] = next;
+    updateFooters();
+  });
+}
+
+guardClientChoiceSelect(els.languageSelect, "language", "Language");
+guardClientChoiceSelect(els.llmSelect, "llm", "LLM");
+
+els.confirmOkBtn?.addEventListener("click", () => closeConfirmModal(true));
+els.confirmCancelBtn?.addEventListener("click", () => closeConfirmModal(false));
+els.confirmCloseBtn?.addEventListener("click", () => closeConfirmModal(false));
+els.confirmModal?.querySelector("[data-close-confirm]")?.addEventListener("click", () =>
+  closeConfirmModal(false)
+);
 
 els.voiceVolume.addEventListener("change", async () => {
   if (!conversation?.setVolume) return;
@@ -943,6 +893,40 @@ els.ttsQcAudio.addEventListener("ended", () => {
 els.startBtn.addEventListener("click", startConversation);
 els.stopBtn.addEventListener("click", stopConversation);
 
-clearChatLog();
+function openInstructionsModal() {
+  if (!els.instructionsModal) return;
+  if (activeModal === "confirm") closeConfirmModal(false);
+  els.instructionsModal.hidden = false;
+  activeModal = "instructions";
+  setAppBlurred(true);
+  (els.closeInstructionsBtn || els.dismissInstructionsBtn)?.focus();
+}
+
+function closeInstructionsModal() {
+  if (!els.instructionsModal || els.instructionsModal.hidden) return;
+  els.instructionsModal.hidden = true;
+  if (activeModal === "instructions") {
+    activeModal = null;
+    setAppBlurred(false);
+  }
+  els.openInstructionsBtn?.focus();
+}
+
+els.openInstructionsBtn?.addEventListener("click", openInstructionsModal);
+els.closeInstructionsBtn?.addEventListener("click", closeInstructionsModal);
+els.dismissInstructionsBtn?.addEventListener("click", closeInstructionsModal);
+els.instructionsModal?.querySelector("[data-close-instructions]")?.addEventListener("click", closeInstructionsModal);
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  if (activeModal === "confirm") {
+    closeConfirmModal(false);
+    return;
+  }
+  if (activeModal === "instructions") {
+    closeInstructionsModal();
+  }
+});
+
 setConfigFieldsEnabled(false);
 loadAgentConfig();

@@ -8,7 +8,13 @@
       name="description"
       content="Mockup of how client agent testing could look for the Productions team."
     />
-    <meta name="theme-color" content="#f4f4f5" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div class="app">
@@ -18,246 +24,121 @@
             class="brand-logo"
             src="https://11labs-nonprd-15f22c1d.s3.eu-west-3.amazonaws.com/a2ea339b-8b5e-41bb-b706-24eda8a4c9e3/elevenlabs-symbol.svg"
             alt="ElevenLabs"
-            width="40"
-            height="40"
+            width="28"
+            height="28"
             decoding="async"
           />
           <div class="brand-text">
             <span class="brand-name">agent testing design</span>
-            <span class="brand-sub"
-              >Mockup of how client agent testing could look for the Productions team</span
-            >
+            <span class="brand-sub">Productions review mockup · session overrides only</span>
           </div>
         </div>
-        <div class="top-meta" aria-live="polite">
+        <div class="top-actions">
+          <button type="button" id="openInstructionsBtn" class="btn btn-ghost btn-compact">
+            How to review
+          </button>
           <span id="configSourceBadge" class="badge badge-muted">Session overrides</span>
-          <span id="agentFetchStatus" class="fetch-status">Loading live agent config…</span>
         </div>
       </header>
+
+      <div class="page-heading">
+        <div class="page-heading-row">
+          <h1>Agent</h1>
+          <span class="pill">Review</span>
+        </div>
+        <p class="page-sub" id="agentFetchStatus">Loading live agent config…</p>
+      </div>
 
       <p class="session-banner" role="note">
         All edits on this page apply to the <strong>next session only</strong>. They are never saved
         back to the client agent.
       </p>
 
-      <section class="card instructions" aria-labelledby="instructions-heading">
-        <h2 id="instructions-heading">How Productions runs a review</h2>
-        <ol>
-          <li>
-            Review the <strong>system prompt, first message, language, and LLM</strong> loaded live
-            from the client agent — adjust only for this session if you need a controlled variant.
-          </li>
-          <li>
-            Check <strong>voice settings</strong> (volume, voice ID, model, stability, speed, similarity).
-            Options reflect what the client configured; your edits stay session-only.
-          </li>
-          <li>
-            Start a call. If multimodal is enabled, use <strong>voice and/or text</strong> in the same
-            conversation; the agent replies in chat and audio.
-          </li>
-          <li>
-            For pronunciation QC, paste the same sentence into the <strong>TTS QC</strong> box and
-            regenerate with the current voice settings to see if the issue repeats.
-          </li>
-          <li>
-            Capture remarks for the client (aliases, wording, voice settings) — nothing here writes
-            back to the agent.
-          </li>
-        </ol>
-      </section>
-
-      <div class="grid grid-main">
-        <aside class="card prompt-card" aria-labelledby="prompt-heading">
-          <div class="card-column-body">
-            <div class="card-head">
-              <div class="card-head-row">
-                <h2 id="prompt-heading">Agent config</h2>
+      <div class="workspace">
+        <div class="workspace-main">
+          <section class="editor-card" aria-labelledby="prompt-heading">
+            <div class="editor-card-head">
+              <div class="editor-card-titles">
+                <h2 id="prompt-heading">System prompt</h2>
                 <span class="badge badge-muted" id="agentConfigBadge" title="Source of current values">…</span>
               </div>
-              <p class="card-lead">
-                Values are always loaded live from the client agent. Edit freely for this session —
-                changes apply on the next connect and are never persisted.
-              </p>
               <button type="button" id="resetAgentConfigBtn" class="btn-link">Reset to live defaults</button>
             </div>
+            <p class="editor-lead">
+              Personality and channel-specific reply behavior — loaded live from the client agent.
+            </p>
+            <textarea class="prompt-body" id="systemPrompt" spellcheck="false"></textarea>
+          </section>
 
-            <div class="prompt-scroll">
-              <label class="field-label" for="systemPrompt">System prompt</label>
-              <textarea class="prompt-body" id="systemPrompt" spellcheck="false"></textarea>
+          <section class="editor-card" aria-labelledby="first-message-heading">
+            <div class="editor-card-head">
+              <h2 id="first-message-heading">First message</h2>
             </div>
+            <p class="editor-lead">
+              The first message the agent will say. If empty, the agent will wait for the user to
+              start the conversation.
+            </p>
+            <textarea id="firstMessage" class="input-textarea" rows="3" spellcheck="true"></textarea>
+          </section>
 
-            <div class="config-fields">
+          <section class="editor-card tts-qc-card" aria-labelledby="tts-qc-heading">
+            <div class="editor-card-head">
+              <div class="editor-card-titles">
+                <h2 id="tts-qc-heading">TTS QC</h2>
+                <span class="badge badge-muted">Same voice settings</span>
+              </div>
+            </div>
+            <p class="editor-lead">
+              If a QC reviewer catches a pronunciation issue, regenerate the
+              <strong>same sentence</strong> with the <strong>same voice settings</strong> to check
+              whether it repeats.
+            </p>
+            <div class="tts-qc-body">
               <div class="field">
-                <label class="field-label" for="firstMessage">First message</label>
-                <p class="field-hint tight">What the client set as the opening line — editable for this session.</p>
-                <textarea id="firstMessage" class="input-textarea" rows="2" spellcheck="true"></textarea>
+                <label class="field-label" for="ttsQcText">Sentence to regenerate</label>
+                <textarea
+                  id="ttsQcText"
+                  class="input-textarea"
+                  rows="3"
+                  placeholder="Paste the agent sentence that sounded wrong…"
+                  spellcheck="true"
+                ></textarea>
               </div>
-
-              <div class="field-row">
-                <div class="field">
-                  <label class="field-label" for="languageSelect">Language</label>
-                  <p class="field-hint tight">Shown when the client agent allows language selection.</p>
-                  <label class="select-wrap">
-                    <span class="visually-hidden">Language</span>
-                    <select id="languageSelect" class="select" required>
-                      <option value="ar">Arabic</option>
-                      <option value="cs">Czech</option>
-                      <option value="hr">Croatian</option>
-                      <option value="da">Danish</option>
-                      <option value="en">English</option>
-                      <option value="fi">Finnish</option>
-                      <option value="fr">French</option>
-                      <option value="de">German</option>
-                      <option value="el">Greek</option>
-                      <option value="it">Italian</option>
-                      <option value="no">Norwegian</option>
-                      <option value="pl">Polish</option>
-                      <option value="ru">Russian</option>
-                      <option value="es">Spanish</option>
-                      <option value="sv">Swedish</option>
-                      <option value="tr">Turkish</option>
-                      <option value="uk">Ukrainian</option>
-                    </select>
-                  </label>
-                </div>
-                <div class="field">
-                  <label class="field-label" for="llmSelect">LLM</label>
-                  <p class="field-hint tight">Preview of the selected model — changeable for this session.</p>
-                  <label class="select-wrap">
-                    <span class="visually-hidden">LLM</span>
-                    <select id="llmSelect" class="select">
-                      <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                      <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
-                      <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                      <option value="gpt-4o">GPT-4o</option>
-                      <option value="gpt-4o-mini">GPT-4o Mini</option>
-                      <option value="claude-sonnet-4">Claude Sonnet 4</option>
-                      <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-                    </select>
-                  </label>
-                </div>
+              <div class="tts-qc-actions">
+                <button type="button" id="ttsQcGenerateBtn" class="btn btn-primary">
+                  Generate &amp; play
+                </button>
+                <button type="button" id="ttsQcStopBtn" class="btn btn-ghost" disabled>Stop</button>
               </div>
+              <p class="field-hint tight tts-qc-meta" id="ttsQcMeta">
+                Uses current Voice ID, model, stability, speed, and similarity boost.
+              </p>
+              <audio id="ttsQcAudio" controls class="tts-qc-audio" hidden></audio>
+              <p id="ttsQcError" class="error" hidden></p>
             </div>
-          </div>
-          <p class="card-model-foot" id="llmFoot">LLM: — · waiting for live config</p>
-        </aside>
+          </section>
+        </div>
 
-        <main class="card control-card">
-          <div class="card-column-body">
-            <section class="call-block" aria-labelledby="call-heading">
-              <div class="card-head card-head-inline">
-                <h2 id="call-heading">Session</h2>
-                <p class="card-lead">
-                  Use headphones in a quiet room. Speak naturally — or type if multimodal text input is on.
-                </p>
+        <aside class="workspace-rail" aria-label="Agent settings">
+          <section class="rail-section" aria-labelledby="voice-heading">
+            <div class="rail-section-head">
+              <div>
+                <h2 id="voice-heading">Voices</h2>
+                <p class="rail-desc">Select the ElevenLabs voices you want to use for the agent.</p>
               </div>
-
-              <div class="call-surface" data-state="idle">
-                <div class="call-visual" aria-hidden="true">
-                  <div class="call-ring"></div>
-                  <div class="headphone">
-                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                      <path
-                        class="hp-band"
-                        d="M12 28c0-11 9.4-20 20-20s20 9 20 20"
-                        stroke="currentColor"
-                        stroke-width="3"
-                        stroke-linecap="round"
-                      />
-                      <rect class="hp-cup" x="6" y="28" width="14" height="22" rx="4" stroke="currentColor" stroke-width="2.5" />
-                      <rect class="hp-cup" x="44" y="28" width="14" height="22" rx="4" stroke="currentColor" stroke-width="2.5" />
-                    </svg>
-                  </div>
-                </div>
-                <p class="call-label" id="callLabel">Waiting for live config</p>
-                <p class="call-sub" id="modeLine">Load agent settings from ElevenLabs before starting a session.</p>
-                <div class="call-actions">
-                  <button type="button" id="startBtn" class="btn btn-primary" disabled>
-                    <span class="btn-icon" aria-hidden="true">●</span>
-                    Start call
-                  </button>
-                  <button type="button" id="stopBtn" class="btn btn-ghost" disabled>End call</button>
-                </div>
-              </div>
-
-              <div id="modeToggleWrap" class="mode-toggle-wrap" hidden>
-                <span class="field-label">Conversation mode</span>
-                <div class="segmented" role="group" aria-label="Voice or text mode">
-                  <button type="button" class="segmented-btn is-active" data-mode="voice" id="modeVoiceBtn">
-                    Voice
-                  </button>
-                  <button type="button" class="segmented-btn" data-mode="text" id="modeTextBtn">
-                    Text
-                  </button>
-                </div>
-                <p class="field-hint tight">
-                  Reflects Widget → Interface <code>conversation_mode_toggle_enabled</code>. Mode is
-                  applied when you start (or restart) the session.
-                </p>
-              </div>
-
-              <div class="chat-panel" id="chatPanel" hidden>
-                <div class="chat-head">
-                  <span class="field-label">Transcript / text chat</span>
-                  <span class="badge badge-muted" id="chatModeBadge">Voice + text</span>
-                </div>
-                <div class="chat-log" id="chatLog" aria-live="polite"></div>
-                <form class="chat-compose" id="chatForm">
-                  <label class="visually-hidden" for="chatInput">Message</label>
-                  <input
-                    type="text"
-                    id="chatInput"
-                    class="input"
-                    placeholder="Type a message…"
-                    autocomplete="off"
-                    disabled
-                  />
-                  <button type="submit" id="chatSendBtn" class="btn btn-ghost" disabled>Send</button>
-                </form>
-              </div>
-
-              <dl class="metrics">
-                <div>
-                  <dt>Connection</dt>
-                  <dd id="connStatus">Disconnected</dd>
-                </div>
-                <div>
-                  <dt>Mode</dt>
-                  <dd id="modeStatus">—</dd>
-                </div>
-              </dl>
-
-              <p id="errorBox" class="error" hidden></p>
-            </section>
-          </div>
-          <p class="card-model-foot" id="ttsFoot">TTS: — · waiting for live config</p>
-        </main>
-      </div>
-
-      <div class="grid grid-secondary">
-        <section class="card panel-card" aria-labelledby="voice-heading">
-          <div class="card-head">
-            <div class="card-head-row">
-              <h2 id="voice-heading">Voice settings</h2>
               <span class="badge badge-muted" id="voiceConfigBadge">…</span>
             </div>
-            <p class="card-lead">
-              Always fetched live from the client agent. Edits apply once per session and do not
-              persist.
-            </p>
-            <button type="button" id="resetVoiceBtn" class="btn-link">Reset voice to live defaults</button>
-          </div>
-          <div class="panel-body fields-stack">
-            <div class="field">
-              <div class="range-head">
-                <label class="field-label" for="voiceVolume">Agent voice volume</label>
-                <output id="voiceVolumeOut" for="voiceVolume">0.80</output>
+            <button type="button" id="resetVoiceBtn" class="btn-link rail-reset">
+              Reset voice to live defaults
+            </button>
+            <div class="rail-stack">
+              <div class="field">
+                <div class="range-head">
+                  <label class="field-label" for="voiceVolume">Volume</label>
+                  <output id="voiceVolumeOut" for="voiceVolume">0.80</output>
+                </div>
+                <input type="range" id="voiceVolume" class="range" min="0" max="1" step="0.01" value="0.8" />
               </div>
-              <input type="range" id="voiceVolume" class="range" min="0" max="1" step="0.01" value="0.8" />
-              <p class="field-hint tight">Playback volume for the agent (client <code>setVolume</code>).</p>
-            </div>
-
-            <div class="field-row">
               <div class="field">
                 <label class="field-label" for="voiceId">Voice ID</label>
                 <input type="text" id="voiceId" class="input" spellcheck="false" />
@@ -275,111 +156,248 @@
                   </select>
                 </label>
               </div>
-            </div>
-
-            <div class="field">
-              <div class="range-head">
-                <label class="field-label" for="stability">Stability</label>
-                <output id="stabilityOut" for="stability">0.50</output>
+              <div class="field">
+                <div class="range-head">
+                  <label class="field-label" for="stability">Stability</label>
+                  <output id="stabilityOut" for="stability">0.50</output>
+                </div>
+                <input type="range" id="stability" class="range" min="0" max="1" step="0.01" value="0.5" />
               </div>
-              <input type="range" id="stability" class="range" min="0" max="1" step="0.01" value="0.5" />
-            </div>
-
-            <div class="field">
-              <div class="range-head">
-                <label class="field-label" for="speed">Speed</label>
-                <output id="speedOut" for="speed">1.00</output>
+              <div class="field">
+                <div class="range-head">
+                  <label class="field-label" for="speed">Speed</label>
+                  <output id="speedOut" for="speed">1.00</output>
+                </div>
+                <input type="range" id="speed" class="range" min="0.7" max="1.2" step="0.01" value="1" />
               </div>
-              <input type="range" id="speed" class="range" min="0.7" max="1.2" step="0.01" value="1" />
-            </div>
-
-            <div class="field">
-              <div class="range-head">
-                <label class="field-label" for="similarityBoost">Similarity boost</label>
-                <output id="similarityOut" for="similarityBoost">0.80</output>
+              <div class="field">
+                <div class="range-head">
+                  <label class="field-label" for="similarityBoost">Similarity boost</label>
+                  <output id="similarityOut" for="similarityBoost">0.80</output>
+                </div>
+                <input
+                  type="range"
+                  id="similarityBoost"
+                  class="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value="0.8"
+                />
               </div>
-              <input type="range" id="similarityBoost" class="range" min="0" max="1" step="0.01" value="0.8" />
             </div>
-          </div>
-        </section>
+            <p class="card-model-foot" id="ttsFoot">TTS: — · waiting for live config</p>
+          </section>
 
-        <section class="card panel-card" aria-labelledby="multimodal-heading">
-          <div class="card-head">
-            <div class="card-head-row">
-              <h2 id="multimodal-heading">Voice + text (multimodal)</h2>
-              <span class="badge badge-muted" id="widgetConfigBadge">…</span>
+          <section class="rail-section" aria-labelledby="language-heading">
+            <div class="rail-section-head">
+              <div>
+                <h2 id="language-heading">Language</h2>
+                <p class="rail-desc">Client default language for this agent. Confirm before changing.</p>
+              </div>
             </div>
-            <p class="card-lead">
-              Mirrors live Widget → Interface flags. Users can switch between voice and text in one
-              conversation; the agent replies via text chat and audio when multimodal is on.
-            </p>
-          </div>
-          <div class="panel-body fields-stack">
-            <label class="toggle-row">
-              <input type="checkbox" id="textInputEnabled" />
-              <span>
-                <span class="toggle-title">Text input enabled</span>
-                <span class="toggle-desc"
-                  ><code>text_input_enabled</code> — loaded live from the agent widget. Allows typing
-                  while voice is active.</span
-                >
+            <label class="setting-row" for="languageSelect">
+              <span class="setting-row-copy">
+                <span class="setting-row-title">Default language</span>
+                <span class="setting-row-hint">Requires confirmation</span>
               </span>
+              <select id="languageSelect" class="select select-inline" required>
+                <option value="ar">Arabic</option>
+                <option value="cs">Czech</option>
+                <option value="hr">Croatian</option>
+                <option value="da">Danish</option>
+                <option value="en">English</option>
+                <option value="fi">Finnish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="el">Greek</option>
+                <option value="it">Italian</option>
+                <option value="no">Norwegian</option>
+                <option value="pl">Polish</option>
+                <option value="ru">Russian</option>
+                <option value="es">Spanish</option>
+                <option value="sv">Swedish</option>
+                <option value="tr">Turkish</option>
+                <option value="uk">Ukrainian</option>
+              </select>
             </label>
-            <label class="toggle-row">
-              <input type="checkbox" id="conversationModeToggleEnabled" />
-              <span>
-                <span class="toggle-title">Conversation mode toggle</span>
-                <span class="toggle-desc"
-                  ><code>conversation_mode_toggle_enabled</code> — loaded live from the agent widget.
-                  Lets the tester switch Voice ↔ Text mode themselves.</span
-                >
+          </section>
+
+          <section class="rail-section" aria-labelledby="llm-heading">
+            <div class="rail-section-head">
+              <div>
+                <h2 id="llm-heading">LLM</h2>
+                <p class="rail-desc">Client model choice. Confirm before changing for this session.</p>
+              </div>
+            </div>
+            <label class="setting-row" for="llmSelect">
+              <span class="setting-row-copy">
+                <span class="setting-row-title">Provider model</span>
+                <span class="setting-row-hint">Requires confirmation</span>
               </span>
+              <select id="llmSelect" class="select select-inline">
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                <option value="gpt-4o">GPT-4o</option>
+                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                <option value="claude-sonnet-4">Claude Sonnet 4</option>
+                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+              </select>
             </label>
-            <p class="field-hint">
-              Session note: these flags control this review UI and how the SDK session starts
-              (<code>textOnly</code> when Text mode is selected). They are not written back to the
-              agent widget config.
-            </p>
-          </div>
-        </section>
+            <p class="card-model-foot" id="llmFoot">LLM: — · waiting for live config</p>
+          </section>
+
+          <section class="rail-section session-rail" aria-labelledby="call-heading">
+            <div class="rail-section-head">
+              <div>
+                <h2 id="call-heading">Preview</h2>
+                <p class="rail-desc">Start a live voice session with the overrides on this page.</p>
+              </div>
+            </div>
+
+            <div class="call-surface" data-state="idle">
+              <div class="call-visual" aria-hidden="true">
+                <div class="call-ring"></div>
+                <div class="headphone">
+                  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path
+                      class="hp-band"
+                      d="M12 28c0-11 9.4-20 20-20s20 9 20 20"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    />
+                    <rect
+                      class="hp-cup"
+                      x="6"
+                      y="28"
+                      width="14"
+                      height="22"
+                      rx="4"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                    />
+                    <rect
+                      class="hp-cup"
+                      x="44"
+                      y="28"
+                      width="14"
+                      height="22"
+                      rx="4"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div class="call-status">
+                <p class="call-label" id="callLabel">Waiting for live config</p>
+                <p class="call-sub" id="modeLine">
+                  Load agent settings from ElevenLabs before starting a session.
+                </p>
+              </div>
+              <div class="call-actions">
+                <button type="button" id="startBtn" class="btn btn-primary" disabled>
+                  <span class="btn-icon" aria-hidden="true">●</span>
+                  Start call
+                </button>
+                <button type="button" id="stopBtn" class="btn btn-ghost" disabled>End call</button>
+              </div>
+            </div>
+
+            <dl class="metrics">
+              <div>
+                <dt>Connection</dt>
+                <dd id="connStatus">Disconnected</dd>
+              </div>
+              <div>
+                <dt>Mode</dt>
+                <dd id="modeStatus">—</dd>
+              </div>
+            </dl>
+
+            <p id="errorBox" class="error" hidden></p>
+          </section>
+        </aside>
       </div>
-
-      <section class="card panel-card tts-qc-card" aria-labelledby="tts-qc-heading">
-        <div class="card-head">
-          <div class="card-head-row">
-            <h2 id="tts-qc-heading">TTS QC</h2>
-            <span class="badge badge-muted">Same voice settings</span>
-          </div>
-          <p class="card-lead">
-            If a QC reviewer catches a pronunciation (or similar) issue, regenerate the
-            <strong>same sentence</strong> with the <strong>same voice settings / model</strong> to
-            hear whether it is a one-off glitch or repetitive — then decide on wording, aliases, or
-            other text-level fixes.
-          </p>
-        </div>
-        <div class="panel-body tts-qc-body">
-          <div class="field">
-            <label class="field-label" for="ttsQcText">Sentence to regenerate</label>
-            <textarea
-              id="ttsQcText"
-              class="input-textarea"
-              rows="3"
-              placeholder="Paste the agent sentence that sounded wrong…"
-              spellcheck="true"
-            ></textarea>
-          </div>
-          <div class="tts-qc-actions">
-            <button type="button" id="ttsQcGenerateBtn" class="btn btn-primary">Generate &amp; play</button>
-            <button type="button" id="ttsQcStopBtn" class="btn btn-ghost" disabled>Stop</button>
-            <p class="field-hint tight tts-qc-meta" id="ttsQcMeta">
-              Uses current Voice ID, model, stability, speed, and similarity boost from Voice settings.
-            </p>
-          </div>
-          <audio id="ttsQcAudio" controls class="tts-qc-audio" hidden></audio>
-          <p id="ttsQcError" class="error" hidden></p>
-        </div>
-      </section>
     </div>
+
+    <div
+      id="instructionsModal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="instructions-heading"
+      hidden
+    >
+      <div class="modal-backdrop" data-close-instructions tabindex="-1"></div>
+      <div class="modal-panel instructions" role="document">
+        <div class="modal-head">
+          <h2 id="instructions-heading">How Productions runs a review</h2>
+          <button
+            type="button"
+            id="closeInstructionsBtn"
+            class="modal-close"
+            aria-label="Close instructions"
+          >
+            ×
+          </button>
+        </div>
+        <ol>
+          <li>
+            Review the <strong>system prompt, first message, language, and LLM</strong> loaded live
+            from the client agent — adjust only for this session if you need a controlled variant.
+          </li>
+          <li>
+            Check <strong>voice settings</strong> (volume, voice ID, model, stability, speed, similarity).
+            Options reflect what the client configured; your edits stay session-only.
+          </li>
+          <li>
+            Start a call and speak with the agent using the live session overrides from this page.
+          </li>
+          <li>
+            For pronunciation QC, paste the same sentence into the <strong>TTS QC</strong> box and
+            regenerate with the current voice settings to see if the issue repeats.
+          </li>
+          <li>
+            Capture remarks for the client (aliases, wording, voice settings) — nothing here writes
+            back to the agent.
+          </li>
+        </ol>
+        <div class="modal-actions">
+          <button type="button" id="dismissInstructionsBtn" class="btn btn-primary">Got it</button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="confirmModal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-heading"
+      hidden
+    >
+      <div class="modal-backdrop" data-close-confirm tabindex="-1"></div>
+      <div class="modal-panel confirm-panel" role="document">
+        <div class="modal-head">
+          <h2 id="confirm-heading">Change client setting?</h2>
+          <button type="button" id="confirmCloseBtn" class="modal-close" aria-label="Cancel">
+            ×
+          </button>
+        </div>
+        <p class="confirm-copy" id="confirmMessage">
+          This value comes from the client agent. Changing it only affects the next session on this
+          page.
+        </p>
+        <div class="modal-actions modal-actions-split">
+          <button type="button" id="confirmCancelBtn" class="btn btn-ghost">Keep client setting</button>
+          <button type="button" id="confirmOkBtn" class="btn btn-primary">Change for this session</button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
