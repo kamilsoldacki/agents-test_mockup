@@ -17,9 +17,51 @@
     />
   </head>
   <body>
+    <script>
+      (function () {
+        var mode = "rozbudowana";
+        try {
+          var raw = String(localStorage.getItem("productions-page-mode") || "")
+            .trim()
+            .toLowerCase();
+          if (raw === "simply" || raw === "simple") mode = "simply";
+        } catch (e) {
+          /* private mode */
+        }
+        document.body.classList.add(
+          mode === "simply" ? "page-mode-simply" : "page-mode-rozbudowana"
+        );
+        document.body.dataset.pageMode = mode;
+      })();
+    </script>
+    <div
+      class="page-mode-toggle"
+      role="group"
+      aria-label="Page version"
+    >
+      <button
+        type="button"
+        id="pageModeSimplyBtn"
+        class="page-mode-btn"
+        data-page-mode="simply"
+        aria-pressed="false"
+      >
+        SIMPLY
+      </button>
+      <button
+        type="button"
+        id="pageModeFullBtn"
+        class="page-mode-btn"
+        data-page-mode="rozbudowana"
+        aria-pressed="true"
+      >
+        ROZBUDOWANA
+      </button>
+    </div>
+
     <div class="app">
       <div class="review-split">
-        <div class="review-split-left">
+        <div class="review-split-left" data-full-only>
           <header class="top">
             <div class="brand">
               <img
@@ -84,21 +126,6 @@
         </div>
 
         <aside class="qc-ratings" aria-labelledby="qc-ratings-heading">
-          <fieldset class="qc-verdict" aria-labelledby="qc-verdict-heading">
-            <legend id="qc-verdict-heading" class="qc-verdict-legend">
-              Ship to client?
-              <span class="qc-verdict-sub">Native-quality go / no-go for this language</span>
-            </legend>
-            <div class="qc-score-options qc-verdict-options">
-              <label class="qc-verdict-yes"
-                ><input type="radio" name="qcShip" value="yes" /> Yes — ship</label
-              >
-              <label class="qc-verdict-no"
-                ><input type="radio" name="qcShip" value="no" /> No — hold</label
-              >
-            </div>
-          </fieldset>
-
           <details class="qc-legend">
             <summary class="qc-legend-summary">
               <h2 id="qc-ratings-heading">QC ratings</h2>
@@ -155,9 +182,8 @@
                 scope). Leave a short example in the wording field.
               </p>
               <p>
-                <strong>Comments</strong> — Required for any score of 1 or a No ship verdict:
-                briefly say what went wrong. If you suggest a system prompt change, write
-                <em>why</em> here.
+                <strong>Comments</strong> — Required for any score of 1: briefly say what went
+                wrong. If you suggest a system prompt change, write <em>why</em> here.
               </p>
               <p>
                 <strong>Scope (intentional)</strong> — Evaluate
@@ -260,11 +286,11 @@
                 id="qcComments"
                 class="input-textarea"
                 rows="2"
-                placeholder="Required when any score is 1 or ship is No — what went wrong?"
+                placeholder="Required when any score is 1 — what went wrong?"
                 spellcheck="true"
               ></textarea>
               <p id="qcCommentsHint" class="field-hint qc-comments-hint" hidden>
-                Comments are required when any rating is 1 or ship is No.
+                Comments are required when any rating is 1.
               </p>
             </div>
           </div>
@@ -272,7 +298,7 @@
       </div>
 
       <div class="workspace">
-        <div class="workspace-main">
+        <div class="workspace-main" data-full-only>
           <section
             class="editor-card edit-gated"
             data-edit-gate
@@ -309,7 +335,7 @@
           </section>
         </div>
 
-        <aside class="workspace-rail" aria-label="Agent settings">
+        <aside class="workspace-rail" data-full-only aria-label="Agent settings">
           <section
             class="rail-section edit-gated"
             data-edit-gate
@@ -527,6 +553,7 @@
           <section
             class="editor-card tts-qc-card edit-gated"
             data-edit-gate
+            data-full-only
             aria-labelledby="tts-qc-heading"
             title="Click to edit"
           >
@@ -614,8 +641,7 @@
           <li>
             Run <strong>2–3 calls of 5–7 minutes</strong> each. Score accent, pronunciation,
             prosody (naturalness), <strong>turn-taking</strong>, artifacts, understanding, and
-            language integrity. Set the top-line <strong>Ship to client?</strong> go/no-go for this
-            language.
+            language integrity.
           </li>
           <li>
             <strong>Scope (intentional):</strong> evaluate delivery, language quality, and
@@ -630,7 +656,7 @@
           </li>
           <li>
             Track how often you had to <strong>repeat</strong> yourself (ASR signal). Leave a short
-            comment whenever you score a 1 or choose No on ship.
+            comment whenever you score a 1.
           </li>
         </ol>
         <div class="modal-actions">

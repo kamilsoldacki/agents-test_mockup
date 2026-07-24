@@ -22,6 +22,9 @@ const REGION_DEFAULT_BRANCH_IDS = {
 
 /** Platform / data residency — paired with server XI_API_KEY_GLOBAL vs XI_API_KEY_EU. */
 const RESIDENCY_STORAGE_KEY = "productions-elevenlabs-residency";
+/** SIMPLY vs ROZBUDOWANA layout — client-side only, no reload. */
+const PAGE_MODE_STORAGE_KEY = "productions-page-mode";
+const PAGE_MODES = new Set(["simply", "rozbudowana"]);
 const REGION_ENDPOINTS = {
   global: {
     origin: "https://api.elevenlabs.io",
@@ -120,6 +123,61 @@ function persistResidencyChoice(next) {
   }
   const select = document.getElementById("residencySelect");
   if (select) select.value = normalized;
+}
+
+function normalizePageMode(value) {
+  const raw = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (raw === "simply" || raw === "simple") return "simply";
+  if (raw === "rozbudowana" || raw === "full" || raw === "expanded") return "rozbudowana";
+  return "";
+}
+
+function readPageModeFromStorage() {
+  try {
+    return normalizePageMode(localStorage.getItem(PAGE_MODE_STORAGE_KEY));
+  } catch {
+    return "";
+  }
+}
+
+function persistPageMode(mode) {
+  try {
+    localStorage.setItem(PAGE_MODE_STORAGE_KEY, mode);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+/** Apply layout mode without reload. Does not touch form / QC state. */
+function setPageMode(mode, { persist = true } = {}) {
+  const next = normalizePageMode(mode) || "rozbudowana";
+  if (!PAGE_MODES.has(next)) return;
+  document.body.classList.toggle("page-mode-simply", next === "simply");
+  document.body.classList.toggle("page-mode-rozbudowana", next === "rozbudowana");
+  document.body.dataset.pageMode = next;
+  if (els.pageModeSimplyBtn) {
+    els.pageModeSimplyBtn.setAttribute("aria-pressed", next === "simply" ? "true" : "false");
+  }
+  if (els.pageModeFullBtn) {
+    els.pageModeFullBtn.setAttribute("aria-pressed", next === "rozbudowana" ? "true" : "false");
+  }
+  if (persist) persistPageMode(next);
+}
+
+function initPageModeToggle() {
+  const initial = readPageModeFromStorage() || "rozbudowana";
+  setPageMode(initial, { persist: false });
+
+  const onClick = (event) => {
+    const btn = event.currentTarget;
+    const mode = btn?.dataset?.pageMode;
+    if (!mode) return;
+    setPageMode(mode);
+  };
+  els.pageModeSimplyBtn?.addEventListener("click", onClick);
+  els.pageModeFullBtn?.addEventListener("click", onClick);
 }
 
 const CONVAI_TOKEN_SOURCE = "js_sdk";
@@ -295,6 +353,8 @@ const els = {
   alertMessage: document.getElementById("alertMessage"),
   alertOkBtn: document.getElementById("alertOkBtn"),
   alertCloseBtn: document.getElementById("alertCloseBtn"),
+  pageModeSimplyBtn: document.getElementById("pageModeSimplyBtn"),
+  pageModeFullBtn: document.getElementById("pageModeFullBtn"),
 };
 
 let conversation = null;
@@ -1511,7 +1571,7 @@ const QC_SCORE_NAMES = [
   "qcLanguageIntegrity",
 ];
 /** Non-score radios still persisted with the QC form. */
-const QC_EXTRA_RADIO_NAMES = ["qcShip", "qcRepeatCount", "qcReplayTag"];
+const QC_EXTRA_RADIO_NAMES = ["qcRepeatCount", "qcReplayTag"];
 
 function getCheckedRadioValue(name) {
   const checked = document.querySelector(`input[name="${name}"]:checked`);
@@ -1534,7 +1594,6 @@ function normalizeWordingIssue(value) {
 
 function readQcFormState() {
   return {
-    ship: getCheckedRadioValue("qcShip"),
     accent: getCheckedRadioValue("qcAccent"),
     pronunciation: getCheckedRadioValue("qcPronunciation"),
     naturalness: getCheckedRadioValue("qcNaturalness"),
@@ -1551,7 +1610,6 @@ function readQcFormState() {
 
 function applyQcFormState(state) {
   if (!state) return;
-  setCheckedRadioValue("qcShip", state.ship);
   setCheckedRadioValue("qcAccent", state.accent);
   setCheckedRadioValue("qcPronunciation", state.pronunciation);
   setCheckedRadioValue("qcNaturalness", state.naturalness);
@@ -1580,7 +1638,7 @@ function hasAnyScoreOfOne(state = readQcFormState()) {
 }
 
 function needsQcComments(state = readQcFormState()) {
-  return hasAnyScoreOfOne(state) || state.ship === "no";
+  return hasAnyScoreOfOne(state);
 }
 
 function validateQcCommentsRequired() {
@@ -1610,7 +1668,6 @@ function persistQcRatings() {
 
 function clearQcForm() {
   applyQcFormState({
-    ship: "",
     accent: "",
     pronunciation: "",
     naturalness: "",
@@ -1707,6 +1764,7 @@ function closeInstructionsModal() {
 let pendingInstructionsOnEntry = false;
 
 function maybeOpenInstructionsOnEntry() {
+  if (document.body.dataset.pageMode === "simply") return;
   if (isInstructionsDismissed()) return;
   if (activeModal === "alert") {
     pendingInstructionsOnEntry = true;
@@ -1827,6 +1885,7 @@ function initEditGates() {
 }
 
 initEditGates();
+initPageModeToggle();
 
 setConfigFieldsEnabled(false);
 loadAgentConfig().finally(maybeOpenInstructionsOnEntry);
