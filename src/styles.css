@@ -151,6 +151,40 @@ body {
   line-height: 1.2;
 }
 
+.agent-id-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+  margin: 0.45rem 0 0;
+}
+
+.agent-id-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.agent-id-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 28rem;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.6875rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.agent-id-row .btn-compact {
+  flex-shrink: 0;
+}
+
+.residency-select {
+  flex: 0 1 12rem;
+  max-width: 14rem;
+  cursor: pointer;
+}
+
 .page-sub {
   margin: 0.35rem 0 0;
   font-size: 0.75rem;

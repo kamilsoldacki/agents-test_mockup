@@ -1,17 +1,104 @@
 import { Conversation } from "@elevenlabs/client";
 import "./styles.css";
 
-const AGENT_ID = "agent_7201ky2fs4xtfwg9tn2x641n318p";
+const DEFAULT_AGENT_ID = "agent_7201ky2fs4xtfwg9tn2x641n318p";
+/** Mutable: set from the Agent ID field (or URL ?agent_id=) before loading config. */
+let currentAgentId = DEFAULT_AGENT_ID;
 const BRANCH_ID =
   import.meta.env.VITE_BRANCH_ID === "false"
     ? ""
     : (import.meta.env.VITE_BRANCH_ID ?? "agtbrch_4301ky2fs5b2f3rs50hn9sq987d7");
 
-// Agent lives on EU data residency (eu.residency.elevenlabs.io) — global api.elevenlabs.io returns 404.
-const API_ORIGIN =
-  import.meta.env.VITE_ELEVENLABS_API_ORIGIN ?? "https://api.eu.residency.elevenlabs.io";
-const LIVEKIT_URL =
-  import.meta.env.VITE_ELEVENLABS_LIVEKIT_URL ?? "wss://livekit.rtc.eu.residency.elevenlabs.io";
+/** Platform / data residency — paired with server XI_API_KEY_GLOBAL vs XI_API_KEY_EU. */
+const RESIDENCY_STORAGE_KEY = "productions-elevenlabs-residency";
+const REGION_ENDPOINTS = {
+  global: {
+    origin: "https://api.elevenlabs.io",
+    livekitUrl: "wss://livekit.rtc.elevenlabs.io",
+    label: "Global",
+  },
+  eu: {
+    origin: "https://api.eu.residency.elevenlabs.io",
+    livekitUrl: "wss://livekit.rtc.eu.residency.elevenlabs.io",
+    label: "EU residency",
+  },
+};
+
+function normalizeAgentId(value) {
+  return String(value || "").trim();
+}
+
+function isValidAgentId(value) {
+  return /^agent_[a-zA-Z0-9]+$/.test(value);
+}
+
+function normalizeResidency(value) {
+  const raw = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (raw === "global" || raw === "us") return "global";
+  if (raw === "eu" || raw === "eu-residency") return "eu";
+  return "";
+}
+
+function readAgentIdFromUrl() {
+  try {
+    const fromQuery = new URLSearchParams(window.location.search).get("agent_id");
+    const normalized = normalizeAgentId(fromQuery);
+    return isValidAgentId(normalized) ? normalized : "";
+  } catch {
+    return "";
+  }
+}
+
+function readResidencyFromUrl() {
+  try {
+    return normalizeResidency(
+      new URLSearchParams(window.location.search).get("residency")
+    );
+  } catch {
+    return "";
+  }
+}
+
+function readResidencyFromStorage() {
+  try {
+    return normalizeResidency(localStorage.getItem(RESIDENCY_STORAGE_KEY));
+  } catch {
+    return "";
+  }
+}
+
+currentAgentId = readAgentIdFromUrl() || DEFAULT_AGENT_ID;
+/** Mutable: Global vs EU — URL ?residency= wins over localStorage; default EU (legacy). */
+let currentResidency =
+  readResidencyFromUrl() || readResidencyFromStorage() || "eu";
+
+function getResidencyEndpoints() {
+  return REGION_ENDPOINTS[currentResidency] || REGION_ENDPOINTS.eu;
+}
+
+function persistResidencyChoice(next) {
+  const normalized = normalizeResidency(next) || "eu";
+  currentResidency = normalized;
+  try {
+    localStorage.setItem(RESIDENCY_STORAGE_KEY, normalized);
+  } catch {
+    /* ignore quota / private mode */
+  }
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set("residency", normalized);
+    if (isValidAgentId(currentAgentId)) {
+      url.searchParams.set("agent_id", currentAgentId);
+    }
+    window.history.replaceState({}, "", url);
+  } catch {
+    /* ignore */
+  }
+  const select = document.getElementById("residencySelect");
+  if (select) select.value = normalized;
+}
 
 const CONVAI_TOKEN_SOURCE = "js_sdk";
 const CONVAI_TOKEN_VERSION = "1.2.1";
@@ -124,6 +211,9 @@ const els = {
   expressiveMode: document.getElementById("expressiveMode"),
   suggestedAudioTags: document.getElementById("suggestedAudioTags"),
   agentFetchStatus: document.getElementById("agentFetchStatus"),
+  agentIdInput: document.getElementById("agentIdInput"),
+  residencySelect: document.getElementById("residencySelect"),
+  loadAgentBtn: document.getElementById("loadAgentBtn"),
   agentConfigBadge: document.getElementById("agentConfigBadge"),
   voiceConfigBadge: document.getElementById("voiceConfigBadge"),
   ttsQcText: document.getElementById("ttsQcText"),
@@ -434,13 +524,20 @@ function parseTokenResponse(text, httpStatus) {
 }
 
 async function fetchConversationTokenFromDevServer() {
-  const res = await fetch(apiUrl("/api/token"));
+  const url = new URL(apiUrl("/api/token"), window.location.origin);
+  url.searchParams.set("agent_id", currentAgentId);
+  url.searchParams.set("residency", currentResidency);
+  const res = await fetch(url.toString());
   const text = await res.text();
   if (!res.ok) {
     let detail = text;
     try {
       const j = JSON.parse(text);
-      detail = j.detail?.map((d) => d.msg).join("; ") || JSON.stringify(j);
+      detail =
+        j.error ||
+        j.detail?.map?.((d) => d.msg).join("; ") ||
+        (Array.isArray(j.detail) ? JSON.stringify(j.detail) : j.detail) ||
+        JSON.stringify(j);
     } catch {
       /* raw text */
     }
@@ -450,8 +547,9 @@ async function fetchConversationTokenFromDevServer() {
 }
 
 async function fetchConversationTokenFromBrowser() {
-  const url = new URL(`${API_ORIGIN}/v1/convai/conversation/token`);
-  url.searchParams.set("agent_id", AGENT_ID);
+  const { origin } = getResidencyEndpoints();
+  const url = new URL(`${origin}/v1/convai/conversation/token`);
+  url.searchParams.set("agent_id", currentAgentId);
   if (BRANCH_ID) {
     url.searchParams.set("branch_id", BRANCH_ID);
   }
@@ -464,7 +562,11 @@ async function fetchConversationTokenFromBrowser() {
     let detail = text;
     try {
       const j = JSON.parse(text);
-      detail = j.detail?.map((d) => d.msg).join("; ") || JSON.stringify(j);
+      detail =
+        j.error ||
+        j.detail?.map?.((d) => d.msg).join("; ") ||
+        (Array.isArray(j.detail) ? JSON.stringify(j.detail) : j.detail) ||
+        JSON.stringify(j);
     } catch {
       /* raw text */
     }
@@ -502,6 +604,9 @@ function setSessionControlsDisabled(disabled) {
     els.similarityBoost,
     els.expressiveMode,
     els.suggestedAudioTags,
+    els.agentIdInput,
+    els.residencySelect,
+    els.loadAgentBtn,
   ];
   for (const el of fields) {
     if (el) el.disabled = disabled;
@@ -627,8 +732,12 @@ function markConfigUnavailable(reason) {
   setBadge(els.voiceConfigBadge, "error");
   els.agentFetchStatus.textContent = `Could not load live settings: ${reason}`;
   setCallUi("idle");
+  const keyHint =
+    currentResidency === "global"
+      ? "XI_API_KEY_GLOBAL"
+      : "XI_API_KEY_EU (or legacy XI_API_KEY)";
   showError(
-    `Live agent config unavailable: ${reason}. Ensure XI_API_KEY is set on the server (Render env / local .env) and the API can reach ElevenLabs. No repository mock defaults are used.`
+    `Live agent config unavailable: ${reason}. Ensure ${keyHint} is set on the server for ${getResidencyEndpoints().label} and the API can reach ElevenLabs. No repository mock defaults are used.`
   );
 }
 
@@ -640,11 +749,14 @@ async function loadAgentConfig() {
   setBadge(els.voiceConfigBadge, "loading");
   setConfigFieldsEnabled(false);
   clearFormToEmptyState();
-  els.agentFetchStatus.textContent = "Loading live agent config…";
+  els.agentFetchStatus.textContent = `Loading live agent config (${getResidencyEndpoints().label})…`;
   showError(null);
 
   try {
-    const res = await fetch(apiUrl("/api/agent-config"));
+    const url = new URL(apiUrl("/api/agent-config"), window.location.origin);
+    url.searchParams.set("agent_id", currentAgentId);
+    url.searchParams.set("residency", currentResidency);
+    const res = await fetch(url.toString());
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok || !data.agent) {
@@ -652,10 +764,15 @@ async function loadAgentConfig() {
         data.error ||
         data.detail ||
         (res.status === 503
-          ? "XI_API_KEY missing or agent fetch unavailable"
+          ? `${currentResidency === "global" ? "XI_API_KEY_GLOBAL" : "XI_API_KEY_EU"} missing or agent fetch unavailable`
           : `Agent fetch HTTP ${res.status}`);
       markConfigUnavailable(reason);
       return;
+    }
+
+    if (data.agent_id) {
+      currentAgentId = data.agent_id;
+      if (els.agentIdInput) els.agentIdInput.value = currentAgentId;
     }
 
     const mapped = mapAgentPayload(data.agent, data.widget);
@@ -667,7 +784,8 @@ async function loadAgentConfig() {
     };
     applyLoadedDefaultsToForm();
     setConfigFieldsEnabled(true);
-    els.agentFetchStatus.textContent = `Loaded live from agent ${data.agent_id || AGENT_ID}${
+    const regionLabel = getResidencyEndpoints().label;
+    els.agentFetchStatus.textContent = `Loaded live from agent ${data.agent_id || currentAgentId} · ${regionLabel}${
       data.branch_id || BRANCH_ID ? " · branch" : ""
     }.`;
     setCallUi("idle");
@@ -677,6 +795,33 @@ async function loadAgentConfig() {
       err instanceof Error ? err.message : "Token server unreachable"
     );
   }
+}
+
+async function reloadAgentFromInput() {
+  const nextId = normalizeAgentId(els.agentIdInput?.value);
+  if (!isValidAgentId(nextId)) {
+    showError("Enter a valid agent ID (e.g. agent_…).");
+    els.agentFetchStatus.textContent = "Enter a valid agent ID to load live config.";
+    return;
+  }
+  // Persist QC under the previous agent before switching the key.
+  persistQcRatings();
+  currentAgentId = nextId;
+  if (els.agentIdInput) els.agentIdInput.value = nextId;
+  persistResidencyChoice(currentResidency);
+  restoreQcRatings();
+  validateQcCommentsRequired();
+  await loadAgentConfig();
+}
+
+async function onResidencyChange() {
+  const next = normalizeResidency(els.residencySelect?.value) || "eu";
+  if (next === currentResidency) return;
+  persistQcRatings();
+  persistResidencyChoice(next);
+  restoreQcRatings();
+  validateQcCommentsRequired();
+  await loadAgentConfig();
 }
 
 async function startConversation() {
@@ -700,7 +845,8 @@ async function startConversation() {
     // Session-only: overrides are passed to startSession and never written back to the agent.
     const overrides = buildOverrides(cfg);
     const callbacks = buildCallbacks(cfg);
-    const residency = { origin: API_ORIGIN, livekitUrl: LIVEKIT_URL };
+    const endpoints = getResidencyEndpoints();
+    const residency = { origin: endpoints.origin, livekitUrl: endpoints.livekitUrl };
 
     if (shouldUseTokenServer()) {
       const conversationToken = await fetchConversationTokenFromDevServer();
@@ -715,7 +861,7 @@ async function startConversation() {
 
     if (import.meta.env.VITE_USE_WEBSOCKET === "true") {
       conversation = await Conversation.startSession({
-        agentId: AGENT_ID,
+        agentId: currentAgentId,
         connectionType: "websocket",
         ...residency,
         overrides,
@@ -726,7 +872,7 @@ async function startConversation() {
 
     if (import.meta.env.VITE_USE_AGENT_ID_ONLY === "true") {
       conversation = await Conversation.startSession({
-        agentId: AGENT_ID,
+        agentId: currentAgentId,
         ...residency,
         overrides,
         ...callbacks,
@@ -738,7 +884,7 @@ async function startConversation() {
     // Optional: VITE_PAGES_FORCE_WEBRTC=true in build to use token+branch+WebRTC on github.io anyway.
     if (isGitHubPagesHost() && import.meta.env.VITE_PAGES_FORCE_WEBRTC !== "true") {
       conversation = await Conversation.startSession({
-        agentId: AGENT_ID,
+        agentId: currentAgentId,
         connectionType: "websocket",
         ...residency,
         overrides,
@@ -806,6 +952,7 @@ async function generateTtsQc() {
         stability: cfg.voice.stability,
         speed: cfg.voice.speed,
         similarityBoost: cfg.voice.similarityBoost,
+        residency: currentResidency,
       }),
     });
 
@@ -817,9 +964,11 @@ async function generateTtsQc() {
       } catch {
         /* raw */
       }
+      const keyHint =
+        currentResidency === "global" ? "XI_API_KEY_GLOBAL" : "XI_API_KEY_EU";
       throw new Error(
         detail ||
-          `TTS HTTP ${res.status}. Set XI_API_KEY on the server for live QC playback.`
+          `TTS HTTP ${res.status}. Set ${keyHint} on the server for live QC playback.`
       );
     }
 
@@ -1068,7 +1217,9 @@ els.ttsQcGenerateBtn.addEventListener("click", generateTtsQc);
 els.startBtn.addEventListener("click", startConversation);
 els.stopBtn.addEventListener("click", stopConversation);
 
-const QC_CACHE_KEY = `productions-qc-ratings:${AGENT_ID}`;
+function qcCacheKey() {
+  return `productions-qc-ratings:${currentResidency}:${currentAgentId}`;
+}
 const QC_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const QC_SCORE_NAMES = ["qcAccent", "qcPronunciation", "qcNaturalness", "qcArtifacts"];
 
@@ -1078,9 +1229,9 @@ function getCheckedRadioValue(name) {
 }
 
 function setCheckedRadioValue(name, value) {
-  if (!value) return;
-  const input = document.querySelector(`input[name="${name}"][value="${value}"]`);
-  if (input) input.checked = true;
+  document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+    input.checked = Boolean(value) && input.value === value;
+  });
 }
 
 /** Normalize cached wording: old YES/NO radios → empty string (or keep free text). */
@@ -1137,21 +1288,39 @@ function persistQcRatings() {
       savedAt: Date.now(),
       ...readQcFormState(),
     };
-    localStorage.setItem(QC_CACHE_KEY, JSON.stringify(payload));
+    localStorage.setItem(qcCacheKey(), JSON.stringify(payload));
   } catch {
     // Ignore private mode / quota errors.
   }
 }
 
+function clearQcForm() {
+  applyQcFormState({
+    accent: "",
+    pronunciation: "",
+    naturalness: "",
+    artifacts: "",
+    wordingIssue: "",
+    comments: "",
+  });
+}
+
 function restoreQcRatings() {
   try {
-    const raw = localStorage.getItem(QC_CACHE_KEY);
-    if (!raw) return;
+    const raw = localStorage.getItem(qcCacheKey());
+    if (!raw) {
+      clearQcForm();
+      return;
+    }
     const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return;
+    if (!parsed || typeof parsed !== "object") {
+      clearQcForm();
+      return;
+    }
     const age = Date.now() - Number(parsed.savedAt || 0);
     if (!Number.isFinite(age) || age < 0 || age > QC_CACHE_TTL_MS) {
-      localStorage.removeItem(QC_CACHE_KEY);
+      localStorage.removeItem(qcCacheKey());
+      clearQcForm();
       return;
     }
     applyQcFormState(parsed);
@@ -1234,6 +1403,22 @@ document.addEventListener("keydown", (event) => {
   if (activeModal === "instructions") {
     closeInstructionsModal();
   }
+});
+
+if (els.agentIdInput) els.agentIdInput.value = currentAgentId;
+persistResidencyChoice(currentResidency);
+
+els.loadAgentBtn?.addEventListener("click", () => {
+  void reloadAgentFromInput();
+});
+els.agentIdInput?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    void reloadAgentFromInput();
+  }
+});
+els.residencySelect?.addEventListener("change", () => {
+  void onResidencyChange();
 });
 
 setConfigFieldsEnabled(false);

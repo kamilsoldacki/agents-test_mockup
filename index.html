@@ -48,6 +48,32 @@
               <h1>Agent</h1>
               <span class="pill">Review</span>
             </div>
+            <div class="agent-id-row">
+              <label class="agent-id-label" for="agentIdInput">Agent ID</label>
+              <input
+                id="agentIdInput"
+                class="input agent-id-input"
+                type="text"
+                spellcheck="false"
+                autocomplete="off"
+                placeholder="agent_…"
+                aria-describedby="agentFetchStatus"
+              />
+              <button type="button" id="loadAgentBtn" class="btn btn-ghost btn-compact">
+                Load
+              </button>
+            </div>
+            <div class="agent-id-row">
+              <label class="agent-id-label" for="residencySelect">Platform</label>
+              <select
+                id="residencySelect"
+                class="input agent-id-input residency-select"
+                aria-describedby="agentFetchStatus"
+              >
+                <option value="eu">EU residency</option>
+                <option value="global">Global</option>
+              </select>
+            </div>
             <p class="page-sub" id="agentFetchStatus">Loading live agent config…</p>
           </div>
 
@@ -152,7 +178,7 @@
 
             <div class="field qc-comments-field">
               <label class="field-label" for="qcComments">
-                Comments / examples (required for any 1; if suggesting a system prompt change, say
+                Comments / examples (if suggesting a system prompt change, say
                 why)
               </label>
               <textarea

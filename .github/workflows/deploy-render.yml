@@ -1,17 +1,27 @@
 # Deploy Express (static dist + /api/*) to Render.
 #
-# One-time setup (do once, then every push to main deploys):
-# 1. Confirm repo secret: Settings → Secrets and variables → Actions → XI_API_KEY
-# 2. Render.com → New → Blueprint → connect this GitHub repo (uses render.yaml)
-#    When prompted, paste XI_API_KEY (same value as the GitHub secret).
-# 3. After first deploy, copy Service ID from the service URL bar / Settings
-#    (srv-…) and create Actions secrets:
-#      RENDER_API_KEY   — Render Dashboard → Account Settings → API Keys
-#      RENDER_SERVICE_ID — the srv-… id
-# 4. Optional: RENDER_DEPLOY_HOOK — service → Settings → Deploy Hook (fallback trigger)
+# Runtime keys live on Render (required): set XI_API_KEY_GLOBAL + XI_API_KEY_EU
+# (and optional legacy XI_API_KEY) in Render → Environment. The app reads them there.
 #
-# With RENDER_API_KEY + RENDER_SERVICE_ID, this workflow syncs secrets.XI_API_KEY
-# into Render env on every push, then triggers a deploy. Key never enters the client bundle.
+# GitHub XI_* secrets are optional:
+#   - Omit them if keys are already on Render (Deploy Hook / Blueprint auto-deploy).
+#   - Add them only if you want this workflow to sync keys into Render via the API.
+#     XI_API_KEY_GLOBAL — Global (api.elevenlabs.io)
+#     XI_API_KEY_EU     — EU residency (api.eu.residency.elevenlabs.io)
+#     Optional legacy: XI_API_KEY (EU fallback if XI_API_KEY_EU unset)
+#
+# One-time setup (do once, then every push to main deploys):
+# 1. Render.com → New → Blueprint → connect this GitHub repo (uses render.yaml)
+#    Set XI_* env vars when prompted (or later in Environment). Do not rely on
+#    GitHub secrets for runtime — they are never injected into the client bundle.
+# 2. Optional deploy trigger secrets (Settings → Secrets and variables → Actions):
+#      RENDER_API_KEY   — Render Dashboard → Account Settings → API Keys
+#      RENDER_SERVICE_ID — srv-… from the service URL bar / Settings
+#      RENDER_DEPLOY_HOOK — service → Settings → Deploy Hook (fallback if no API key)
+# 3. Optional sync-from-GitHub: also add XI_API_KEY_GLOBAL / XI_API_KEY_EU
+#    (and legacy XI_API_KEY). With RENDER_API_KEY + RENDER_SERVICE_ID, the
+#    workflow syncs those into Render env, then deploys. If XI_* GitHub secrets
+#    are empty, sync is skipped with a notice (keys already on Render stay as-is).
 
 name: Deploy to Render
 
@@ -51,27 +61,38 @@ jobs:
           fi
           echo "OK: bundled index.html"
 
-      - name: Ensure XI_API_KEY is not in client assets
+      - name: Ensure XI API keys are not in client assets
         env:
+          XI_API_KEY_GLOBAL: ${{ secrets.XI_API_KEY_GLOBAL }}
+          XI_API_KEY_EU: ${{ secrets.XI_API_KEY_EU }}
           XI_API_KEY: ${{ secrets.XI_API_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${XI_API_KEY}" ]; then
-            echo "::error::GitHub Actions secret XI_API_KEY is empty. Add it under Settings → Secrets → Actions."
-            exit 1
+          HAS_ANY=0
+          for name in XI_API_KEY_GLOBAL XI_API_KEY_EU XI_API_KEY; do
+            val="${!name:-}"
+            if [ -n "$val" ]; then
+              HAS_ANY=1
+              if grep -R --fixed-strings -n -- "$val" dist/; then
+                echo "::error::${name} leaked into dist/ — aborting."
+                exit 1
+              fi
+              echo "OK: ${name} not present in dist/"
+            fi
+          done
+          if [ "$HAS_ANY" -eq 0 ]; then
+            echo "::notice::No GitHub XI_* secrets — skipping leak check."
+            echo "OK if keys live only on Render. For sync-from-GitHub, add XI_API_KEY_GLOBAL + XI_API_KEY_EU."
           fi
-          if grep -R --fixed-strings -n -- "${XI_API_KEY}" dist/; then
-            echo "::error::XI_API_KEY leaked into dist/ — aborting."
-            exit 1
-          fi
-          echo "OK: XI_API_KEY not present in dist/"
 
   sync-and-deploy:
     needs: build-and-verify
     runs-on: ubuntu-latest
     steps:
-      - name: Sync XI_API_KEY to Render and deploy
+      - name: Sync XI API keys to Render and deploy
         env:
+          XI_API_KEY_GLOBAL: ${{ secrets.XI_API_KEY_GLOBAL }}
+          XI_API_KEY_EU: ${{ secrets.XI_API_KEY_EU }}
           XI_API_KEY: ${{ secrets.XI_API_KEY }}
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
@@ -79,28 +100,38 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -z "${XI_API_KEY}" ]; then
-            echo "::error::XI_API_KEY secret missing"
-            exit 1
+          HAS_XI=0
+          if [ -n "${XI_API_KEY_GLOBAL:-}" ] || [ -n "${XI_API_KEY_EU:-}" ] || [ -n "${XI_API_KEY:-}" ]; then
+            HAS_XI=1
           fi
 
           if [ -n "${RENDER_API_KEY}" ] && [ -n "${RENDER_SERVICE_ID}" ]; then
-            echo "Syncing XI_API_KEY to Render service ${RENDER_SERVICE_ID}…"
-            # GET existing vars, replace only XI_API_KEY, PUT merged list (PUT replaces all).
-            EXISTING="$(curl -fsS \
-              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/env-vars" \
-              -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              -H "Accept: application/json")"
-            PAYLOAD="$(echo "$EXISTING" | jq --arg xi "$XI_API_KEY" '
-              (map(.envVar // .) | map({key: .key, value: (.value // "")}) | map(select(.key != "XI_API_KEY")))
-              + [{key: "XI_API_KEY", value: $xi}]
-            ')"
-            curl -fsS -X PUT \
-              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/env-vars" \
-              -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              -H "Accept: application/json" \
-              -H "Content-Type: application/json" \
-              -d "$PAYLOAD" >/dev/null
+            if [ "$HAS_XI" -eq 1 ]; then
+              echo "Syncing XI API keys to Render service ${RENDER_SERVICE_ID}…"
+              # GET existing vars, replace dual (+ legacy) keys, PUT merged list (PUT replaces all).
+              EXISTING="$(curl -fsS \
+                "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/env-vars" \
+                -H "Authorization: Bearer ${RENDER_API_KEY}" \
+                -H "Accept: application/json")"
+              PAYLOAD="$(echo "$EXISTING" | jq \
+                --arg global "${XI_API_KEY_GLOBAL:-}" \
+                --arg eu "${XI_API_KEY_EU:-}" \
+                --arg legacy "${XI_API_KEY:-}" '
+                (map(.envVar // .) | map({key: .key, value: (.value // "")})
+                  | map(select(.key != "XI_API_KEY_GLOBAL" and .key != "XI_API_KEY_EU" and .key != "XI_API_KEY")))
+                + (if $global != "" then [{key: "XI_API_KEY_GLOBAL", value: $global}] else [] end)
+                + (if $eu != "" then [{key: "XI_API_KEY_EU", value: $eu}] else [] end)
+                + (if $legacy != "" then [{key: "XI_API_KEY", value: $legacy}] else [] end)
+              ')"
+              curl -fsS -X PUT \
+                "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/env-vars" \
+                -H "Authorization: Bearer ${RENDER_API_KEY}" \
+                -H "Accept: application/json" \
+                -H "Content-Type: application/json" \
+                -d "$PAYLOAD" >/dev/null
+            else
+              echo "::notice::No GitHub XI_* secrets — skipping env sync; using keys already on Render."
+            fi
 
             echo "Triggering Render deploy…"
             curl -fsS -X POST \
@@ -116,7 +147,7 @@ jobs:
 
           if [ -n "${RENDER_DEPLOY_HOOK}" ]; then
             echo "RENDER_API_KEY/SERVICE_ID not set — triggering Deploy Hook only."
-            echo "Ensure XI_API_KEY is already set in the Render dashboard Environment."
+            echo "Ensure XI_API_KEY_GLOBAL / XI_API_KEY_EU (or legacy XI_API_KEY) are already set in the Render dashboard Environment."
             curl -fsS -X POST "${RENDER_DEPLOY_HOOK}"
             echo
             exit 0
@@ -124,5 +155,5 @@ jobs:
 
           echo "::notice::No RENDER_API_KEY+RENDER_SERVICE_ID or RENDER_DEPLOY_HOOK."
           echo "If the repo is connected via Render Blueprint, Render will auto-build from this push."
-          echo "Confirm XI_API_KEY is set once in Render → Environment (same value as GitHub secret)."
+          echo "Confirm XI_API_KEY_GLOBAL + XI_API_KEY_EU are set once in Render → Environment."
           echo "Then open https://agents-test-mockup.onrender.com (or your custom service URL)."

@@ -1,8 +1,9 @@
 # Render Blueprint — one-time: Dashboard → New → Blueprint → connect this repo.
 # https://dashboard.render.com/select-repo?type=blueprint
 #
-# XI_API_KEY: prefer syncing from GitHub Actions (see .github/workflows/deploy-render.yml).
-# Or paste the same value once under the service → Environment.
+# API keys: set XI_API_KEY_GLOBAL + XI_API_KEY_EU (or legacy XI_API_KEY for EU only).
+# Render alone is enough — paste under the service → Environment.
+# Optional: sync from GitHub Actions secrets (see .github/workflows/deploy-render.yml).
 
 services:
   - type: web
@@ -16,7 +17,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: XI_API_KEY_GLOBAL
+        sync: false
+      - key: XI_API_KEY_EU
+        sync: false
+      # Legacy EU fallback if XI_API_KEY_EU is unset
       - key: XI_API_KEY
         sync: false
-      - key: ELEVENLABS_API_ORIGIN
-        value: https://api.eu.residency.elevenlabs.io
