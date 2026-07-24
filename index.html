@@ -19,47 +19,66 @@
   <body>
     <script>
       (function () {
-        var mode = "rozbudowana";
+        var mode = "detailed";
         try {
           var raw = String(localStorage.getItem("productions-page-mode") || "")
             .trim()
             .toLowerCase();
           if (raw === "simply" || raw === "simple") mode = "simply";
+          else if (
+            raw === "detailed" ||
+            raw === "rozbudowana" ||
+            raw === "full" ||
+            raw === "expanded"
+          ) {
+            mode = "detailed";
+            if (raw === "rozbudowana") {
+              try {
+                localStorage.setItem("productions-page-mode", "detailed");
+              } catch (e2) {
+                /* ignore */
+              }
+            }
+          }
         } catch (e) {
           /* private mode */
         }
         document.body.classList.add(
-          mode === "simply" ? "page-mode-simply" : "page-mode-rozbudowana"
+          mode === "simply" ? "page-mode-simply" : "page-mode-detailed"
         );
         document.body.dataset.pageMode = mode;
       })();
     </script>
-    <div
-      class="page-mode-toggle"
-      role="group"
-      aria-label="Page version"
-    >
-      <button
-        type="button"
-        id="pageModeSimplyBtn"
-        class="page-mode-btn"
-        data-page-mode="simply"
-        aria-pressed="false"
-      >
-        SIMPLY
-      </button>
-      <button
-        type="button"
-        id="pageModeFullBtn"
-        class="page-mode-btn"
-        data-page-mode="rozbudowana"
-        aria-pressed="true"
-      >
-        ROZBUDOWANA
-      </button>
-    </div>
-
     <div class="app">
+      <div class="page-mode-bar">
+        <div
+          class="page-mode-toggle"
+          role="group"
+          aria-label="Page version"
+        >
+          <button
+            type="button"
+            id="pageModeSimplyBtn"
+            class="page-mode-btn"
+            data-page-mode="simply"
+            aria-pressed="false"
+            title="Simply"
+          >
+            SIMPLY
+          </button>
+          <button
+            type="button"
+            id="pageModeDetailedBtn"
+            class="page-mode-btn"
+            data-page-mode="detailed"
+            aria-pressed="true"
+            title="Detailed"
+          >
+            DETAILED
+          </button>
+        </div>
+      </div>
+
       <div class="review-split">
         <div class="review-split-left" data-full-only>
           <header class="top">
@@ -133,7 +152,20 @@
             </summary>
             <div class="qc-legend-body">
               <p>
+                <strong>Ship verdict</strong> — Top-line call:
+                <em>Would you ship this agent to a client in this language?</em>
+                Yes = ready; With reservations = usable but note caveats in comments; No = do not
+                ship. This replaces any older Yes/No “Ship to client?” toggle.
+              </p>
+              <p>
+                <strong>Clusters</strong> —
+                <em>How it sounds</em> = voice delivery (accent, pronunciation, prosody,
+                artifacts). <em>How it behaved</em> = conversation dynamics (turn-taking, times you
+                had to repeat, language integrity).
+              </p>
+              <p>
                 <strong>Scale</strong> — 1 = needs work, 2 = acceptable, 3 = native-quality
+                (1–3 dimensions only).
               </p>
               <p>
                 <strong>Accent nativeness</strong> — 1 = clearly non-native throughout; 3 =
@@ -151,19 +183,19 @@
                 delivery. Example: every sentence ends with the same rising tone → 1.
               </p>
               <p>
+                <strong>Voice artifacts / loudness</strong> — Distortion, harsh compression,
+                shouting, fatiguing volume. 1 = worst; 3 = clean and comfortable.
+              </p>
+              <p>
                 <strong>Turn-taking / responsiveness</strong> — Conversational dynamics: did the
                 agent interrupt, leave awkward silence, reply late, or refuse barge-in? 1 =
                 regularly broken timing; 3 = smooth, interruptible dialogue. Example: agent talks
                 over you mid-question, or 3+ second dead air before answering → 1.
               </p>
               <p>
-                <strong>Voice artifacts / loudness</strong> — Distortion, harsh compression,
-                shouting, fatiguing volume. 1 = worst; 3 = clean and comfortable.
-              </p>
-              <p>
-                <strong>Did the agent understand you?</strong> — Reviewer-side ASR signal. 1 =
-                often wrong / many repeats; 3 = understood first time. Track how many times you had
-                to repeat. Example: agent answers a different question twice in a row → 1.
+                <strong>Times you had to repeat</strong> — Count of times you repeated yourself
+                (ASR / hearing signal). Use 0 / 1 / 2 / 3+ — there is no separate 1–3
+                “understanding” score.
               </p>
               <p>
                 <strong>Language integrity</strong> — Stayed in the assigned language with no
@@ -172,7 +204,7 @@
                 turn → 1.
               </p>
               <p>
-                <strong>One-off vs repeatable</strong> — After
+                <strong>One-off vs repeatable</strong> — In DETAILED mode, after
                 <em>Replay a sentence</em>: tag whether the error came back (bug) or was a one-off
                 slip.
               </p>
@@ -183,7 +215,8 @@
               </p>
               <p>
                 <strong>Comments</strong> — Required for any score of 1: briefly say what went
-                wrong. If you suggest a system prompt change, write <em>why</em> here.
+                wrong. If you suggest a system prompt change, write <em>why</em> here. Also note
+                caveats when the ship verdict is With reservations or No.
               </p>
               <p>
                 <strong>Scope (intentional)</strong> — Evaluate
@@ -195,72 +228,98 @@
             </div>
           </details>
 
-          <div class="qc-ratings-grid" role="group" aria-label="Voice and agent quality scores">
-            <fieldset class="qc-score">
-              <legend>Accent nativeness</legend>
-              <div class="qc-score-options">
-                <label><input type="radio" name="qcAccent" value="1" /> 1</label>
-                <label><input type="radio" name="qcAccent" value="2" /> 2</label>
-                <label><input type="radio" name="qcAccent" value="3" /> 3</label>
-              </div>
-            </fieldset>
-            <fieldset class="qc-score">
-              <legend>Pronunciation: numbers/dates/names</legend>
-              <div class="qc-score-options">
-                <label><input type="radio" name="qcPronunciation" value="1" /> 1</label>
-                <label><input type="radio" name="qcPronunciation" value="2" /> 2</label>
-                <label><input type="radio" name="qcPronunciation" value="3" /> 3</label>
-              </div>
-            </fieldset>
-            <fieldset class="qc-score">
-              <legend>Conversational naturalness (prosody)</legend>
-              <div class="qc-score-options">
-                <label><input type="radio" name="qcNaturalness" value="1" /> 1</label>
-                <label><input type="radio" name="qcNaturalness" value="2" /> 2</label>
-                <label><input type="radio" name="qcNaturalness" value="3" /> 3</label>
-              </div>
-            </fieldset>
-            <fieldset class="qc-score">
-              <legend>Turn-taking / responsiveness</legend>
-              <div class="qc-score-options">
-                <label><input type="radio" name="qcTurnTaking" value="1" /> 1</label>
-                <label><input type="radio" name="qcTurnTaking" value="2" /> 2</label>
-                <label><input type="radio" name="qcTurnTaking" value="3" /> 3</label>
-              </div>
-            </fieldset>
-            <fieldset class="qc-score">
-              <legend>Voice artifacts / loudness</legend>
-              <div class="qc-score-options">
-                <label><input type="radio" name="qcArtifacts" value="1" /> 1</label>
-                <label><input type="radio" name="qcArtifacts" value="2" /> 2</label>
-                <label><input type="radio" name="qcArtifacts" value="3" /> 3</label>
-              </div>
-            </fieldset>
-            <fieldset class="qc-score">
-              <legend>Did the agent understand you?</legend>
-              <div class="qc-score-options">
-                <label><input type="radio" name="qcUnderstanding" value="1" /> 1</label>
-                <label><input type="radio" name="qcUnderstanding" value="2" /> 2</label>
-                <label><input type="radio" name="qcUnderstanding" value="3" /> 3</label>
-              </div>
-            </fieldset>
-            <fieldset class="qc-score">
-              <legend>Language integrity</legend>
-              <div class="qc-score-options">
-                <label><input type="radio" name="qcLanguageIntegrity" value="1" /> 1</label>
-                <label><input type="radio" name="qcLanguageIntegrity" value="2" /> 2</label>
-                <label><input type="radio" name="qcLanguageIntegrity" value="3" /> 3</label>
-              </div>
-            </fieldset>
-            <fieldset class="qc-score qc-repeats">
-              <legend>Times you had to repeat</legend>
-              <div class="qc-score-options">
-                <label><input type="radio" name="qcRepeatCount" value="0" /> 0</label>
-                <label><input type="radio" name="qcRepeatCount" value="1" /> 1</label>
-                <label><input type="radio" name="qcRepeatCount" value="2" /> 2</label>
-                <label><input type="radio" name="qcRepeatCount" value="3+" /> 3+</label>
-              </div>
-            </fieldset>
+          <fieldset class="qc-ship-verdict" aria-describedby="qc-ship-verdict-hint">
+            <legend>
+              Would you ship this agent to a client in this language?
+            </legend>
+            <div class="qc-score-options">
+              <label><input type="radio" name="qcShipVerdict" value="yes" /> Yes</label>
+              <label
+                ><input type="radio" name="qcShipVerdict" value="reservations" /> With
+                reservations</label
+              >
+              <label><input type="radio" name="qcShipVerdict" value="no" /> No</label>
+            </div>
+            <p id="qc-ship-verdict-hint" class="field-hint tight">
+              Overall ship call for this language — not a binary Yes/No toggle.
+            </p>
+          </fieldset>
+
+          <div class="qc-cluster" role="group" aria-labelledby="qc-sounds-heading">
+            <h3 id="qc-sounds-heading" class="qc-cluster-heading">How it sounds</h3>
+            <div
+              class="qc-ratings-grid"
+              role="group"
+              aria-label="Voice delivery scores: accent, pronunciation, prosody, artifacts"
+            >
+              <fieldset class="qc-score">
+                <legend>Accent nativeness</legend>
+                <div class="qc-score-options">
+                  <label><input type="radio" name="qcAccent" value="1" /> 1</label>
+                  <label><input type="radio" name="qcAccent" value="2" /> 2</label>
+                  <label><input type="radio" name="qcAccent" value="3" /> 3</label>
+                </div>
+              </fieldset>
+              <fieldset class="qc-score">
+                <legend>Pronunciation: numbers/dates/names</legend>
+                <div class="qc-score-options">
+                  <label><input type="radio" name="qcPronunciation" value="1" /> 1</label>
+                  <label><input type="radio" name="qcPronunciation" value="2" /> 2</label>
+                  <label><input type="radio" name="qcPronunciation" value="3" /> 3</label>
+                </div>
+              </fieldset>
+              <fieldset class="qc-score">
+                <legend>Conversational naturalness (prosody)</legend>
+                <div class="qc-score-options">
+                  <label><input type="radio" name="qcNaturalness" value="1" /> 1</label>
+                  <label><input type="radio" name="qcNaturalness" value="2" /> 2</label>
+                  <label><input type="radio" name="qcNaturalness" value="3" /> 3</label>
+                </div>
+              </fieldset>
+              <fieldset class="qc-score">
+                <legend>Voice artifacts / loudness</legend>
+                <div class="qc-score-options">
+                  <label><input type="radio" name="qcArtifacts" value="1" /> 1</label>
+                  <label><input type="radio" name="qcArtifacts" value="2" /> 2</label>
+                  <label><input type="radio" name="qcArtifacts" value="3" /> 3</label>
+                </div>
+              </fieldset>
+            </div>
+          </div>
+
+          <div class="qc-cluster" role="group" aria-labelledby="qc-behaved-heading">
+            <h3 id="qc-behaved-heading" class="qc-cluster-heading">How it behaved</h3>
+            <div
+              class="qc-ratings-grid"
+              role="group"
+              aria-label="Behavior scores: turn-taking, times you had to repeat, language integrity"
+            >
+              <fieldset class="qc-score">
+                <legend>Turn-taking / responsiveness</legend>
+                <div class="qc-score-options">
+                  <label><input type="radio" name="qcTurnTaking" value="1" /> 1</label>
+                  <label><input type="radio" name="qcTurnTaking" value="2" /> 2</label>
+                  <label><input type="radio" name="qcTurnTaking" value="3" /> 3</label>
+                </div>
+              </fieldset>
+              <fieldset class="qc-score qc-repeats">
+                <legend>Times you had to repeat</legend>
+                <div class="qc-score-options">
+                  <label><input type="radio" name="qcRepeatCount" value="0" /> 0</label>
+                  <label><input type="radio" name="qcRepeatCount" value="1" /> 1</label>
+                  <label><input type="radio" name="qcRepeatCount" value="2" /> 2</label>
+                  <label><input type="radio" name="qcRepeatCount" value="3+" /> 3+</label>
+                </div>
+              </fieldset>
+              <fieldset class="qc-score">
+                <legend>Language integrity</legend>
+                <div class="qc-score-options">
+                  <label><input type="radio" name="qcLanguageIntegrity" value="1" /> 1</label>
+                  <label><input type="radio" name="qcLanguageIntegrity" value="2" /> 2</label>
+                  <label><input type="radio" name="qcLanguageIntegrity" value="3" /> 3</label>
+                </div>
+              </fieldset>
+            </div>
           </div>
 
           <div class="qc-notes-row">
@@ -639,9 +698,15 @@
             speak with the agent as a customer would.
           </li>
           <li>
-            Run <strong>2–3 calls of 5–7 minutes</strong> each. Score accent, pronunciation,
-            prosody (naturalness), <strong>turn-taking</strong>, artifacts, understanding, and
-            language integrity.
+            Run <strong>2–3 calls of 5–7 minutes</strong> each. Under
+            <strong>How it sounds</strong>, score accent, pronunciation, prosody, and artifacts.
+            Under <strong>How it behaved</strong>, score turn-taking and language integrity, and
+            record <strong>Times you had to repeat</strong> (0–3+) — there is no separate
+            “understanding” 1–3 score.
+          </li>
+          <li>
+            Give a top-line <strong>ship verdict</strong>: Yes / With reservations / No — would you
+            ship this agent to a client in this language?
           </li>
           <li>
             <strong>Scope (intentional):</strong> evaluate delivery, language quality, and
@@ -650,13 +715,13 @@
             phrasing only.
           </li>
           <li>
-            If something is mispronounced, paste that exact sentence under
+            In DETAILED mode, if something is mispronounced, paste that exact sentence under
             <strong>Replay a sentence</strong>, play it again, and tag
             <strong>one-off</strong> vs <strong>repeatable bug</strong>.
           </li>
           <li>
-            Track how often you had to <strong>repeat</strong> yourself (ASR signal). Leave a short
-            comment whenever you score a 1.
+            Leave a short comment whenever you score a 1 (and note caveats for With reservations /
+            No).
           </li>
         </ol>
         <div class="modal-actions">

@@ -41,12 +41,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* —— Page mode toggle (always visible, top-right) —— */
+/* —— Page mode toggle (top-right, scrolls with page) —— */
+.page-mode-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 0 0 0.85rem;
+}
+
 .page-mode-toggle {
-  position: fixed;
-  top: 0.65rem;
-  right: 0.75rem;
-  z-index: 40;
+  position: static;
   display: inline-flex;
   align-items: stretch;
   gap: 0;
@@ -103,7 +107,10 @@ body.page-mode-simply .app {
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 420px);
   gap: 1rem 1.25rem;
   align-items: start;
-  padding-top: 2.75rem;
+}
+
+body.page-mode-simply .page-mode-bar {
+  grid-column: 1 / -1;
 }
 
 body.page-mode-simply .review-split {
@@ -130,11 +137,6 @@ body.page-mode-simply .workspace-preview {
   width: 100%;
   margin: 0;
   padding: 1rem clamp(1rem, 2vw, 1.75rem) 2.5rem;
-}
-
-/* Leave room for the fixed mode toggle in full mode too */
-body.page-mode-rozbudowana .app {
-  padding-top: 2.75rem;
 }
 
 .top {
@@ -401,6 +403,42 @@ body.page-mode-rozbudowana .app {
   font-weight: 600;
 }
 
+.qc-ship-verdict {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #e8d9a8;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.7);
+  flex-shrink: 0;
+}
+
+.qc-ship-verdict legend {
+  padding: 0 0.15rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.qc-ship-verdict .field-hint {
+  margin: 0.35rem 0 0;
+}
+
+.qc-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.qc-cluster-heading {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
 .qc-ratings-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -409,20 +447,34 @@ body.page-mode-rozbudowana .app {
   flex-shrink: 0;
 }
 
+.qc-cluster .qc-ratings-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.qc-cluster:last-of-type .qc-ratings-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 @media (max-width: 1200px) {
-  .qc-ratings-grid {
+  .qc-ratings-grid,
+  .qc-cluster .qc-ratings-grid,
+  .qc-cluster:last-of-type .qc-ratings-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 900px) {
-  .qc-ratings-grid {
+  .qc-ratings-grid,
+  .qc-cluster .qc-ratings-grid,
+  .qc-cluster:last-of-type .qc-ratings-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
 
 @media (max-width: 520px) {
-  .qc-ratings-grid {
+  .qc-ratings-grid,
+  .qc-cluster .qc-ratings-grid,
+  .qc-cluster:last-of-type .qc-ratings-grid {
     grid-template-columns: 1fr;
   }
 }

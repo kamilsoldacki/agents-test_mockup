@@ -22,9 +22,9 @@ const REGION_DEFAULT_BRANCH_IDS = {
 
 /** Platform / data residency — paired with server XI_API_KEY_GLOBAL vs XI_API_KEY_EU. */
 const RESIDENCY_STORAGE_KEY = "productions-elevenlabs-residency";
-/** SIMPLY vs ROZBUDOWANA layout — client-side only, no reload. */
+/** SIMPLY vs DETAILED layout — client-side only, no reload. */
 const PAGE_MODE_STORAGE_KEY = "productions-page-mode";
-const PAGE_MODES = new Set(["simply", "rozbudowana"]);
+const PAGE_MODES = new Set(["simply", "detailed"]);
 const REGION_ENDPOINTS = {
   global: {
     origin: "https://api.elevenlabs.io",
@@ -130,13 +130,29 @@ function normalizePageMode(value) {
     .trim()
     .toLowerCase();
   if (raw === "simply" || raw === "simple") return "simply";
-  if (raw === "rozbudowana" || raw === "full" || raw === "expanded") return "rozbudowana";
+  if (
+    raw === "detailed" ||
+    raw === "rozbudowana" ||
+    raw === "full" ||
+    raw === "expanded"
+  ) {
+    return "detailed";
+  }
   return "";
 }
 
 function readPageModeFromStorage() {
   try {
-    return normalizePageMode(localStorage.getItem(PAGE_MODE_STORAGE_KEY));
+    const raw = localStorage.getItem(PAGE_MODE_STORAGE_KEY);
+    const normalized = normalizePageMode(raw);
+    // Migrate legacy Polish key so existing users keep DETAILED.
+    if (
+      normalized === "detailed" &&
+      String(raw || "").trim().toLowerCase() === "rozbudowana"
+    ) {
+      persistPageMode("detailed");
+    }
+    return normalized;
   } catch {
     return "";
   }
@@ -152,23 +168,26 @@ function persistPageMode(mode) {
 
 /** Apply layout mode without reload. Does not touch form / QC state. */
 function setPageMode(mode, { persist = true } = {}) {
-  const next = normalizePageMode(mode) || "rozbudowana";
+  const next = normalizePageMode(mode) || "detailed";
   if (!PAGE_MODES.has(next)) return;
   document.body.classList.toggle("page-mode-simply", next === "simply");
-  document.body.classList.toggle("page-mode-rozbudowana", next === "rozbudowana");
+  document.body.classList.toggle("page-mode-detailed", next === "detailed");
   document.body.dataset.pageMode = next;
   if (els.pageModeSimplyBtn) {
     els.pageModeSimplyBtn.setAttribute("aria-pressed", next === "simply" ? "true" : "false");
   }
-  if (els.pageModeFullBtn) {
-    els.pageModeFullBtn.setAttribute("aria-pressed", next === "rozbudowana" ? "true" : "false");
+  if (els.pageModeDetailedBtn) {
+    els.pageModeDetailedBtn.setAttribute(
+      "aria-pressed",
+      next === "detailed" ? "true" : "false"
+    );
   }
   if (persist) persistPageMode(next);
 }
 
 function initPageModeToggle() {
-  const initial = readPageModeFromStorage() || "rozbudowana";
-  setPageMode(initial, { persist: false });
+  const initial = readPageModeFromStorage() || "detailed";
+  setPageMode(initial, { persist: true });
 
   const onClick = (event) => {
     const btn = event.currentTarget;
@@ -177,7 +196,7 @@ function initPageModeToggle() {
     setPageMode(mode);
   };
   els.pageModeSimplyBtn?.addEventListener("click", onClick);
-  els.pageModeFullBtn?.addEventListener("click", onClick);
+  els.pageModeDetailedBtn?.addEventListener("click", onClick);
 }
 
 const CONVAI_TOKEN_SOURCE = "js_sdk";
@@ -354,7 +373,7 @@ const els = {
   alertOkBtn: document.getElementById("alertOkBtn"),
   alertCloseBtn: document.getElementById("alertCloseBtn"),
   pageModeSimplyBtn: document.getElementById("pageModeSimplyBtn"),
-  pageModeFullBtn: document.getElementById("pageModeFullBtn"),
+  pageModeDetailedBtn: document.getElementById("pageModeDetailedBtn"),
 };
 
 let conversation = null;
@@ -1565,13 +1584,12 @@ const QC_SCORE_NAMES = [
   "qcAccent",
   "qcPronunciation",
   "qcNaturalness",
-  "qcTurnTaking",
   "qcArtifacts",
-  "qcUnderstanding",
+  "qcTurnTaking",
   "qcLanguageIntegrity",
 ];
 /** Non-score radios still persisted with the QC form. */
-const QC_EXTRA_RADIO_NAMES = ["qcRepeatCount", "qcReplayTag"];
+const QC_EXTRA_RADIO_NAMES = ["qcShipVerdict", "qcRepeatCount", "qcReplayTag"];
 
 function getCheckedRadioValue(name) {
   const checked = document.querySelector(`input[name="${name}"]:checked`);
@@ -1594,12 +1612,12 @@ function normalizeWordingIssue(value) {
 
 function readQcFormState() {
   return {
+    shipVerdict: getCheckedRadioValue("qcShipVerdict"),
     accent: getCheckedRadioValue("qcAccent"),
     pronunciation: getCheckedRadioValue("qcPronunciation"),
     naturalness: getCheckedRadioValue("qcNaturalness"),
-    turnTaking: getCheckedRadioValue("qcTurnTaking"),
     artifacts: getCheckedRadioValue("qcArtifacts"),
-    understanding: getCheckedRadioValue("qcUnderstanding"),
+    turnTaking: getCheckedRadioValue("qcTurnTaking"),
     languageIntegrity: getCheckedRadioValue("qcLanguageIntegrity"),
     repeatCount: getCheckedRadioValue("qcRepeatCount"),
     replayTag: getCheckedRadioValue("qcReplayTag"),
@@ -1610,12 +1628,12 @@ function readQcFormState() {
 
 function applyQcFormState(state) {
   if (!state) return;
+  setCheckedRadioValue("qcShipVerdict", state.shipVerdict);
   setCheckedRadioValue("qcAccent", state.accent);
   setCheckedRadioValue("qcPronunciation", state.pronunciation);
   setCheckedRadioValue("qcNaturalness", state.naturalness);
-  setCheckedRadioValue("qcTurnTaking", state.turnTaking);
   setCheckedRadioValue("qcArtifacts", state.artifacts);
-  setCheckedRadioValue("qcUnderstanding", state.understanding);
+  setCheckedRadioValue("qcTurnTaking", state.turnTaking);
   setCheckedRadioValue("qcLanguageIntegrity", state.languageIntegrity);
   setCheckedRadioValue("qcRepeatCount", state.repeatCount);
   setCheckedRadioValue("qcReplayTag", state.replayTag);
@@ -1630,9 +1648,8 @@ function hasAnyScoreOfOne(state = readQcFormState()) {
     state.accent,
     state.pronunciation,
     state.naturalness,
-    state.turnTaking,
     state.artifacts,
-    state.understanding,
+    state.turnTaking,
     state.languageIntegrity,
   ].includes("1");
 }
@@ -1668,12 +1685,12 @@ function persistQcRatings() {
 
 function clearQcForm() {
   applyQcFormState({
+    shipVerdict: "",
     accent: "",
     pronunciation: "",
     naturalness: "",
-    turnTaking: "",
     artifacts: "",
-    understanding: "",
+    turnTaking: "",
     languageIntegrity: "",
     repeatCount: "",
     replayTag: "",
