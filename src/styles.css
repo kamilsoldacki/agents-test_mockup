@@ -408,9 +408,6 @@ body.page-mode-simply .workspace-preview {
   flex-direction: column;
   gap: 0.45rem;
   flex-shrink: 0;
-  padding: 0.5rem 0.55rem 0.55rem;
-  border-radius: var(--radius-md);
-  background: var(--surface);
 }
 
 .qc-cluster-heading {
