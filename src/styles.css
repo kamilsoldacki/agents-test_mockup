@@ -53,9 +53,14 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1rem;
-  margin: 0 0 1.25rem;
-  padding-bottom: 0.9rem;
+  margin: 0 0 1rem;
+  padding-bottom: 0.85rem;
   border-bottom: 1px solid var(--stroke);
+}
+
+/* Header lives in the left column of the top split (beside QC). */
+.review-split-left > .top {
+  margin-bottom: 0.95rem;
 }
 
 .top-actions {
@@ -111,10 +116,21 @@ body {
   .review-split {
     grid-template-columns: 1fr;
   }
+
+  /* Stack: header / Agent Review first, QC ratings below. */
+  .review-split-left {
+    order: 0;
+  }
+
+  .qc-ratings {
+    order: 1;
+  }
 }
 
 .review-split-left {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .page-heading {
@@ -187,7 +203,9 @@ body {
   justify-content: space-between;
   gap: 0.75rem;
   list-style: none;
-  cursor: pointer;
+  /* Only the LEGEND label should toggle — not the full row / heading. */
+  pointer-events: none;
+  cursor: default;
   user-select: none;
 }
 
@@ -204,6 +222,8 @@ body {
 
 .qc-legend-toggle {
   flex-shrink: 0;
+  pointer-events: auto;
+  cursor: pointer;
   font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -215,7 +235,8 @@ body {
   background: rgba(255, 255, 255, 0.7);
 }
 
-.qc-legend-summary:hover .qc-legend-toggle {
+.qc-legend-summary:hover .qc-legend-toggle,
+.qc-legend-toggle:hover {
   color: var(--text);
   border-color: #d6c48a;
 }
@@ -499,8 +520,8 @@ body {
   border-radius: var(--radius-lg);
   padding: 0.85rem 0.95rem;
   font-family: var(--font);
-  font-size: 0.8125rem;
-  line-height: 1.55;
+  font-size: 0.6875rem;
+  line-height: 1.45;
   color: var(--text);
   background: var(--bg);
   outline: none;
@@ -616,6 +637,12 @@ body {
   text-underline-offset: 0.15em;
 }
 
+/* Keep Voices reset label on one line in the rail header */
+#resetVoiceBtn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .btn-link:hover:not(:disabled) {
   color: var(--text);
 }
@@ -631,14 +658,11 @@ body {
   border: 1px solid var(--stroke);
   background: var(--bg-muted);
   padding: 0.75rem 0.85rem;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    "visual status"
-    "actions actions";
-  column-gap: 0.75rem;
-  row-gap: 0.65rem;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 0.65rem;
+  text-align: center;
   overflow: hidden;
 }
 
@@ -658,7 +682,6 @@ body {
 
 .call-visual {
   position: relative;
-  grid-area: visual;
   width: 40px;
   height: 40px;
   margin: 0;
@@ -666,9 +689,8 @@ body {
 }
 
 .call-status {
-  grid-area: status;
   min-width: 0;
-  text-align: left;
+  text-align: center;
 }
 
 .call-ring {
@@ -726,11 +748,10 @@ body {
 .call-actions {
   position: relative;
   z-index: 1;
-  grid-area: actions;
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .btn {
