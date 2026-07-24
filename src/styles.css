@@ -340,12 +340,18 @@ body {
 }
 
 .qc-wording-field,
-.qc-comments-field {
+.qc-comments-field,
+.qc-system-prompt-field {
   margin: 0;
 }
 
+.qc-system-prompt-field {
+  grid-column: 1 / -1;
+}
+
 .qc-wording-field .input-textarea,
-.qc-comments-field .input-textarea {
+.qc-comments-field .input-textarea,
+.qc-system-prompt-field .input-textarea {
   min-height: 2.6rem;
   resize: vertical;
 }
@@ -955,6 +961,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
 }
 

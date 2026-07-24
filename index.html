@@ -93,6 +93,10 @@
                 so the team can act on it.
               </p>
               <p>
+                <strong>System prompt change</strong> — If you suggest changing the system prompt,
+                use this field to explain <em>why</em> (optional free-form note).
+              </p>
+              <p>
                 <strong>Scope</strong> — Only review languages you are native or fluent in. Run
                 2–3 calls of 5–7 minutes each. Judge delivery and language quality — not factual
                 accuracy; prices and product details are invented on purpose.
@@ -162,6 +166,19 @@
                 Comments are required when any rating is 1.
               </p>
             </div>
+
+            <div class="field qc-system-prompt-field">
+              <label class="field-label" for="qcSystemPromptChange">
+                Suggested system prompt change (why)
+              </label>
+              <textarea
+                id="qcSystemPromptChange"
+                class="input-textarea"
+                rows="2"
+                placeholder="Optional — if you suggest a system prompt change, explain why"
+                spellcheck="true"
+              ></textarea>
+            </div>
           </div>
         </aside>
       </div>
@@ -202,7 +219,6 @@
                   <h2 id="voice-heading">Voices</h2>
                   <span class="badge badge-muted" id="voiceConfigBadge">…</span>
                 </div>
-                <p class="rail-desc">Select the ElevenLabs voices you want to use for the agent.</p>
               </div>
               <button type="button" id="resetVoiceBtn" class="btn-link">
                 Reset voice to live defaults
@@ -344,7 +360,6 @@
             <div class="rail-section-head">
               <div>
                 <h2 id="call-heading">Preview</h2>
-                <p class="rail-desc">Start a live voice session with the overrides on this page.</p>
               </div>
             </div>
 
@@ -439,7 +454,6 @@
                 <button type="button" id="ttsQcGenerateBtn" class="btn btn-primary">
                   Play sentence
                 </button>
-                <button type="button" id="ttsQcStopBtn" class="btn btn-ghost" disabled>Stop</button>
               </div>
               <p class="field-hint tight tts-qc-meta" id="ttsQcMeta">
                 Plays with the same voice used in the call.

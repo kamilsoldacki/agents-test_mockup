@@ -128,7 +128,6 @@ const els = {
   voiceConfigBadge: document.getElementById("voiceConfigBadge"),
   ttsQcText: document.getElementById("ttsQcText"),
   ttsQcGenerateBtn: document.getElementById("ttsQcGenerateBtn"),
-  ttsQcStopBtn: document.getElementById("ttsQcStopBtn"),
   ttsQcAudio: document.getElementById("ttsQcAudio"),
   ttsQcError: document.getElementById("ttsQcError"),
   ttsQcMeta: document.getElementById("ttsQcMeta"),
@@ -136,6 +135,7 @@ const els = {
   qcCommentsHint: document.getElementById("qcCommentsHint"),
   qcCommentsField: document.querySelector(".qc-comments-field"),
   qcWordingIssue: document.getElementById("qcWordingIssue"),
+  qcSystemPromptChange: document.getElementById("qcSystemPromptChange"),
   instructionsModal: document.getElementById("instructionsModal"),
   openInstructionsBtn: document.getElementById("openInstructionsBtn"),
   closeInstructionsBtn: document.getElementById("closeInstructionsBtn"),
@@ -161,14 +161,30 @@ let configSource = { agent: "loading", voice: "loading" };
 const committedClientChoices = {
   language: "",
   llm: "",
+  voiceId: "",
+  modelId: "",
+  stability: "",
+  speed: "",
+  similarityBoost: "",
+  expressiveMode: true,
+  suggestedAudioTags: "",
 };
 
 function syncCommittedClientChoices() {
   committedClientChoices.language = els.languageSelect.value;
   committedClientChoices.llm = els.llmSelect.value;
+  committedClientChoices.voiceId = els.voiceId.value;
+  committedClientChoices.modelId = els.ttsModelSelect.value;
+  committedClientChoices.stability = els.stability.value;
+  committedClientChoices.speed = els.speed.value;
+  committedClientChoices.similarityBoost = els.similarityBoost.value;
+  committedClientChoices.expressiveMode = els.expressiveMode
+    ? els.expressiveMode.checked
+    : true;
+  committedClientChoices.suggestedAudioTags = els.suggestedAudioTags?.value ?? "";
 }
 
-/** Suppress Language/LLM confirmation while applying programmatic select updates. */
+/** Suppress Language/LLM/Voices confirmation while applying programmatic updates. */
 let suppressClientChoiceGuard = false;
 
 function withSuppressedClientChoiceGuard(fn) {
@@ -779,7 +795,6 @@ async function generateTtsQc() {
   }
 
   els.ttsQcGenerateBtn.disabled = true;
-  els.ttsQcStopBtn.disabled = false;
 
   try {
     const res = await fetch(apiUrl("/api/tts"), {
@@ -820,15 +835,7 @@ async function generateTtsQc() {
     showTtsQcError(err instanceof Error ? err.message : String(err));
   } finally {
     els.ttsQcGenerateBtn.disabled = !liveConfigLoaded;
-    // Stop only stays enabled while audio is actually playing.
-    els.ttsQcStopBtn.disabled = els.ttsQcAudio.paused;
   }
-}
-
-function stopTtsQc() {
-  els.ttsQcAudio.pause();
-  els.ttsQcAudio.currentTime = 0;
-  els.ttsQcStopBtn.disabled = true;
 }
 
 // —— UI wiring ——
@@ -855,48 +862,43 @@ els.resetAgentConfigBtn.addEventListener("click", () => {
 
 els.resetVoiceBtn.addEventListener("click", () => {
   if (!loadedDefaults) return;
-  if (loadedDefaults.voice.volume != null) sessionVoiceVolume = loadedDefaults.voice.volume;
-  els.voiceId.value = loadedDefaults.voice.voiceId || "";
-  if (loadedDefaults.voice.modelId) {
-    ensureSelectOption(
-      els.ttsModelSelect,
-      loadedDefaults.voice.modelId,
-      TTS_LABELS[loadedDefaults.voice.modelId] || loadedDefaults.voice.modelId
-    );
-  }
-  if (loadedDefaults.voice.stability != null) {
-    els.stability.value = loadedDefaults.voice.stability;
-  }
-  if (loadedDefaults.voice.speed != null) els.speed.value = loadedDefaults.voice.speed;
-  if (loadedDefaults.voice.similarityBoost != null) {
-    els.similarityBoost.value = loadedDefaults.voice.similarityBoost;
-  }
-  if (els.expressiveMode) {
-    els.expressiveMode.checked =
-      loadedDefaults.voice.expressiveMode == null
-        ? true
-        : Boolean(loadedDefaults.voice.expressiveMode);
-  }
-  if (els.suggestedAudioTags) {
-    els.suggestedAudioTags.value = formatSuggestedAudioTags(
-      loadedDefaults.voice.suggestedAudioTags
-    );
-  }
+  withSuppressedClientChoiceGuard(() => {
+    if (loadedDefaults.voice.volume != null) sessionVoiceVolume = loadedDefaults.voice.volume;
+    els.voiceId.value = loadedDefaults.voice.voiceId || "";
+    if (loadedDefaults.voice.modelId) {
+      ensureSelectOption(
+        els.ttsModelSelect,
+        loadedDefaults.voice.modelId,
+        TTS_LABELS[loadedDefaults.voice.modelId] || loadedDefaults.voice.modelId
+      );
+    }
+    if (loadedDefaults.voice.stability != null) {
+      els.stability.value = loadedDefaults.voice.stability;
+    }
+    if (loadedDefaults.voice.speed != null) els.speed.value = loadedDefaults.voice.speed;
+    if (loadedDefaults.voice.similarityBoost != null) {
+      els.similarityBoost.value = loadedDefaults.voice.similarityBoost;
+    }
+    if (els.expressiveMode) {
+      els.expressiveMode.checked =
+        loadedDefaults.voice.expressiveMode == null
+          ? true
+          : Boolean(loadedDefaults.voice.expressiveMode);
+    }
+    if (els.suggestedAudioTags) {
+      els.suggestedAudioTags.value = formatSuggestedAudioTags(
+        loadedDefaults.voice.suggestedAudioTags
+      );
+    }
+  });
   syncRangeOutputs();
+  syncCommittedClientChoices();
   updateFooters();
 });
 
 for (const range of [els.stability, els.speed, els.similarityBoost]) {
-  range.addEventListener("input", () => {
-    syncRangeOutputs();
-    updateFooters();
-  });
+  range.addEventListener("input", syncRangeOutputs);
 }
-
-els.voiceId.addEventListener("input", updateFooters);
-els.ttsModelSelect.addEventListener("change", updateFooters);
-els.expressiveMode?.addEventListener("change", updateFooters);
-els.suggestedAudioTags?.addEventListener("input", updateFooters);
 
 let confirmResolver = null;
 let activeModal = null;
@@ -940,35 +942,71 @@ function askClientChoiceConfirm(fieldLabel) {
   });
 }
 
-function guardClientChoiceSelect(select, fieldKey, fieldLabel) {
-  select.addEventListener("change", async () => {
+/**
+ * Confirm before committing a client-agent field change.
+ * Cancel reverts to the last committed value. Programmatic updates use suppressClientChoiceGuard.
+ */
+function guardClientChoiceControl(
+  el,
+  fieldKey,
+  fieldLabel,
+  { read = () => el.value, write = (v) => { el.value = v; }, onAfter = () => {} } = {}
+) {
+  if (!el) return;
+  el.addEventListener("change", async () => {
     if (suppressClientChoiceGuard) {
+      onAfter();
       updateFooters();
       return;
     }
-    const next = select.value;
+    const next = read();
     if (next === committedClientChoices[fieldKey]) {
+      onAfter();
       updateFooters();
       return;
     }
     const ok = await askClientChoiceConfirm(fieldLabel);
     if (!ok) {
       // Revert only if still on this pending value; a newer change may have moved it.
-      if (select.value === next) {
+      if (read() === next) {
         withSuppressedClientChoiceGuard(() => {
-          select.value = committedClientChoices[fieldKey];
+          write(committedClientChoices[fieldKey]);
         });
       }
+      onAfter();
       updateFooters();
       return;
     }
     committedClientChoices[fieldKey] = next;
+    onAfter();
     updateFooters();
   });
 }
 
+function guardClientChoiceSelect(select, fieldKey, fieldLabel) {
+  guardClientChoiceControl(select, fieldKey, fieldLabel);
+}
+
 guardClientChoiceSelect(els.languageSelect, "language", "Language");
 guardClientChoiceSelect(els.llmSelect, "llm", "LLM");
+guardClientChoiceSelect(els.ttsModelSelect, "modelId", "Model");
+guardClientChoiceControl(els.voiceId, "voiceId", "Voice ID");
+guardClientChoiceControl(els.stability, "stability", "Stability", {
+  onAfter: syncRangeOutputs,
+});
+guardClientChoiceControl(els.speed, "speed", "Speed", {
+  onAfter: syncRangeOutputs,
+});
+guardClientChoiceControl(els.similarityBoost, "similarityBoost", "Similarity boost", {
+  onAfter: syncRangeOutputs,
+});
+guardClientChoiceControl(els.expressiveMode, "expressiveMode", "Expressive mode", {
+  read: () => els.expressiveMode.checked,
+  write: (v) => {
+    els.expressiveMode.checked = v;
+  },
+});
+guardClientChoiceControl(els.suggestedAudioTags, "suggestedAudioTags", "Suggested audio tags");
 
 els.confirmOkBtn?.addEventListener("click", () => closeConfirmModal(true));
 els.confirmCancelBtn?.addEventListener("click", () => closeConfirmModal(false));
@@ -978,13 +1016,6 @@ els.confirmModal?.querySelector("[data-close-confirm]")?.addEventListener("click
 );
 
 els.ttsQcGenerateBtn.addEventListener("click", generateTtsQc);
-els.ttsQcStopBtn.addEventListener("click", stopTtsQc);
-els.ttsQcAudio.addEventListener("play", () => {
-  els.ttsQcStopBtn.disabled = false;
-});
-els.ttsQcAudio.addEventListener("ended", () => {
-  els.ttsQcStopBtn.disabled = true;
-});
 
 els.startBtn.addEventListener("click", startConversation);
 els.stopBtn.addEventListener("click", stopConversation);
@@ -1020,6 +1051,7 @@ function readQcFormState() {
     artifacts: getCheckedRadioValue("qcArtifacts"),
     wordingIssue: (els.qcWordingIssue?.value || "").trim(),
     comments: (els.qcComments?.value || "").trim(),
+    systemPromptChange: (els.qcSystemPromptChange?.value || "").trim(),
   };
 }
 
@@ -1033,6 +1065,10 @@ function applyQcFormState(state) {
     els.qcWordingIssue.value = normalizeWordingIssue(state.wordingIssue);
   }
   if (els.qcComments) els.qcComments.value = state.comments || "";
+  if (els.qcSystemPromptChange) {
+    els.qcSystemPromptChange.value =
+      typeof state.systemPromptChange === "string" ? state.systemPromptChange : "";
+  }
 }
 
 function hasAnyScoreOfOne(state = readQcFormState()) {
@@ -1093,6 +1129,7 @@ for (const name of QC_SCORE_NAMES) {
 }
 els.qcWordingIssue?.addEventListener("input", onQcFormChange);
 els.qcComments?.addEventListener("input", onQcFormChange);
+els.qcSystemPromptChange?.addEventListener("input", onQcFormChange);
 
 restoreQcRatings();
 validateQcCommentsRequired();
