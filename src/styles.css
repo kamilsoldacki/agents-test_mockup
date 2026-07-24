@@ -101,8 +101,8 @@ body {
 
 .review-split {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1rem 1.25rem;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.35fr);
+  gap: 0.85rem 1.25rem;
   align-items: start;
   margin: 0 0 1.15rem;
 }
@@ -171,14 +171,14 @@ body {
 
 .qc-ratings {
   min-width: 0;
-  padding: 0.85rem 0.95rem 1rem;
+  padding: 0.65rem 0.85rem 0.75rem;
   border: 1px solid #e8d9a8;
   border-radius: var(--radius-xl);
   background: #fffbeb;
 }
 
 .qc-legend {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.5rem;
 }
 
 .qc-legend-summary {
@@ -227,15 +227,15 @@ body {
 }
 
 .qc-legend-body {
-  margin-top: 0.65rem;
-  padding: 0.7rem 0.8rem;
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.7rem;
   border: 1px solid #e8d9a8;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.85);
 }
 
 .qc-legend-body p {
-  margin: 0 0 0.55rem;
+  margin: 0 0 0.45rem;
   font-size: 0.6875rem;
   color: var(--muted);
   line-height: 1.45;
@@ -252,9 +252,15 @@ body {
 
 .qc-ratings-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem 0.85rem;
-  margin: 0 0 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem 0.65rem;
+  margin: 0 0 0.55rem;
+}
+
+@media (max-width: 1100px) {
+  .qc-ratings-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 520px) {
@@ -263,33 +269,32 @@ body {
   }
 }
 
-.qc-score,
-.qc-wording {
+.qc-score {
   margin: 0;
   padding: 0;
   border: 0;
   min-width: 0;
 }
 
-.qc-score legend,
-.qc-wording legend {
+.qc-score legend {
   padding: 0;
-  margin: 0 0 0.3rem;
-  font-size: 0.6875rem;
+  margin: 0 0 0.2rem;
+  font-size: 0.625rem;
   font-weight: 600;
   color: var(--text);
+  line-height: 1.3;
 }
 
 .qc-score-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 0.65rem;
+  gap: 0.25rem 0.5rem;
 }
 
 .qc-score-options label {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
   font-size: 0.75rem;
   color: var(--text);
   cursor: pointer;
@@ -300,12 +305,28 @@ body {
   cursor: pointer;
 }
 
-.qc-wording {
-  margin: 0 0 0.75rem;
+.qc-notes-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem 0.75rem;
+  align-items: start;
 }
 
+@media (max-width: 700px) {
+  .qc-notes-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.qc-wording-field,
 .qc-comments-field {
   margin: 0;
+}
+
+.qc-wording-field .input-textarea,
+.qc-comments-field .input-textarea {
+  min-height: 2.6rem;
+  resize: vertical;
 }
 
 .qc-comments-hint {

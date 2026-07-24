@@ -87,6 +87,7 @@ const els = {
   qcComments: document.getElementById("qcComments"),
   qcCommentsHint: document.getElementById("qcCommentsHint"),
   qcCommentsField: document.querySelector(".qc-comments-field"),
+  qcWordingIssue: document.getElementById("qcWordingIssue"),
   instructionsModal: document.getElementById("instructionsModal"),
   openInstructionsBtn: document.getElementById("openInstructionsBtn"),
   closeInstructionsBtn: document.getElementById("closeInstructionsBtn"),
@@ -906,13 +907,21 @@ function setCheckedRadioValue(name, value) {
   if (input) input.checked = true;
 }
 
+/** Normalize cached wording: old YES/NO radios → empty string (or keep free text). */
+function normalizeWordingIssue(value) {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "no" || trimmed === "yes") return "";
+  return trimmed;
+}
+
 function readQcFormState() {
   return {
     accent: getCheckedRadioValue("qcAccent"),
     pronunciation: getCheckedRadioValue("qcPronunciation"),
     naturalness: getCheckedRadioValue("qcNaturalness"),
     artifacts: getCheckedRadioValue("qcArtifacts"),
-    wordingIssue: getCheckedRadioValue("qcWordingIssue") || "no",
+    wordingIssue: (els.qcWordingIssue?.value || "").trim(),
     comments: (els.qcComments?.value || "").trim(),
   };
 }
@@ -923,7 +932,9 @@ function applyQcFormState(state) {
   setCheckedRadioValue("qcPronunciation", state.pronunciation);
   setCheckedRadioValue("qcNaturalness", state.naturalness);
   setCheckedRadioValue("qcArtifacts", state.artifacts);
-  setCheckedRadioValue("qcWordingIssue", state.wordingIssue || "no");
+  if (els.qcWordingIssue) {
+    els.qcWordingIssue.value = normalizeWordingIssue(state.wordingIssue);
+  }
   if (els.qcComments) els.qcComments.value = state.comments || "";
 }
 
@@ -983,9 +994,7 @@ for (const name of QC_SCORE_NAMES) {
     input.addEventListener("change", onQcFormChange);
   });
 }
-document.querySelectorAll('input[name="qcWordingIssue"]').forEach((input) => {
-  input.addEventListener("change", onQcFormChange);
-});
+els.qcWordingIssue?.addEventListener("input", onQcFormChange);
 els.qcComments?.addEventListener("input", onQcFormChange);
 
 restoreQcRatings();

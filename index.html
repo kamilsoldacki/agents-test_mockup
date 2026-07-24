@@ -84,9 +84,9 @@
                 shouting, fatiguing volume (1 = worst)
               </p>
               <p>
-                <strong>Wording / content issue</strong> — Mark YES when the problem is
+                <strong>Wording / content issue</strong> — Note when the problem is
                 <em>what</em> was said (awkward or wrong phrasing), not <em>how</em> it was spoken.
-                Note a short example.
+                Leave a short free-form example in the wording field.
               </p>
               <p>
                 <strong>Comments</strong> — Required for any score of 1: briefly say what went wrong
@@ -135,26 +135,33 @@
             </fieldset>
           </div>
 
-          <fieldset class="qc-wording">
-            <legend>Wording / content issue? (phrasing, not voice)</legend>
-            <div class="qc-score-options">
-              <label><input type="radio" name="qcWordingIssue" value="no" checked /> NO</label>
-              <label><input type="radio" name="qcWordingIssue" value="yes" /> YES</label>
+          <div class="qc-notes-row">
+            <div class="field qc-wording-field">
+              <label class="field-label" for="qcWordingIssue">
+                Wording / content issue? (phrasing, not voice)
+              </label>
+              <textarea
+                id="qcWordingIssue"
+                class="input-textarea"
+                rows="2"
+                placeholder="Optional — e.g. awkward phrasing or wrong wording"
+                spellcheck="true"
+              ></textarea>
             </div>
-          </fieldset>
 
-          <div class="field qc-comments-field">
-            <label class="field-label" for="qcComments">Comments / examples</label>
-            <textarea
-              id="qcComments"
-              class="input-textarea"
-              rows="2"
-              placeholder="Required when any score is 1 — what went wrong?"
-              spellcheck="true"
-            ></textarea>
-            <p id="qcCommentsHint" class="field-hint qc-comments-hint" hidden>
-              Comments are required when any rating is 1.
-            </p>
+            <div class="field qc-comments-field">
+              <label class="field-label" for="qcComments">Comments / examples</label>
+              <textarea
+                id="qcComments"
+                class="input-textarea"
+                rows="2"
+                placeholder="Required when any score is 1 — what went wrong?"
+                spellcheck="true"
+              ></textarea>
+              <p id="qcCommentsHint" class="field-hint qc-comments-hint" hidden>
+                Comments are required when any rating is 1.
+              </p>
+            </div>
           </div>
         </aside>
       </div>
@@ -466,8 +473,8 @@
             returns.
           </li>
           <li>
-            Mark <strong>Wording / content issue</strong> when the phrasing itself is odd or wrong
-            (not the pronunciation). Leave a short comment whenever you score a 1.
+            Use the <strong>Wording / content issue</strong> field when the phrasing itself is odd
+            or wrong (not the pronunciation). Leave a short comment whenever you score a 1.
           </li>
         </ol>
         <div class="modal-actions">
