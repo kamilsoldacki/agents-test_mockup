@@ -1713,5 +1713,79 @@ els.residencySelect?.addEventListener("change", () => {
   void onResidencyChange();
 });
 
+/** Soft-mute edit sections until clicked; Preview + QC Ratings stay fully active. */
+function initEditGates() {
+  const gates = Array.from(document.querySelectorAll("[data-edit-gate]"));
+  if (!gates.length) return;
+
+  const FOCUSABLE_SEL = "button, input, select, textarea, a[href], [tabindex]";
+
+  function setDescendantsTabbable(gate, tabbable) {
+    for (const el of gate.querySelectorAll(FOCUSABLE_SEL)) {
+      if (tabbable) {
+        if (el.dataset.editGateTab == null) continue;
+        const prev = el.dataset.editGateTab;
+        delete el.dataset.editGateTab;
+        if (prev === "") el.removeAttribute("tabindex");
+        else el.setAttribute("tabindex", prev);
+      } else {
+        if (el.dataset.editGateTab == null) {
+          el.dataset.editGateTab = el.hasAttribute("tabindex") ? el.getAttribute("tabindex") : "";
+        }
+        el.setAttribute("tabindex", "-1");
+      }
+    }
+  }
+
+  function lockGate(gate) {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && gate.contains(active)) {
+      active.blur();
+    }
+    gate.classList.remove("is-unlocked");
+    gate.setAttribute("aria-disabled", "true");
+    gate.setAttribute("tabindex", "0");
+    setDescendantsTabbable(gate, false);
+  }
+
+  function unlockGate(gate) {
+    gate.classList.add("is-unlocked");
+    gate.setAttribute("aria-disabled", "false");
+    gate.removeAttribute("tabindex");
+    setDescendantsTabbable(gate, true);
+  }
+
+  for (const gate of gates) {
+    lockGate(gate);
+    gate.addEventListener("keydown", (event) => {
+      if (gate.classList.contains("is-unlocked")) return;
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      unlockGate(gate);
+    });
+  }
+
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest(".modal")) return;
+
+      const hitGate = target.closest("[data-edit-gate]");
+      for (const gate of gates) {
+        if (gate === hitGate) {
+          if (!gate.classList.contains("is-unlocked")) unlockGate(gate);
+        } else if (gate.classList.contains("is-unlocked")) {
+          lockGate(gate);
+        }
+      }
+    },
+    true
+  );
+}
+
+initEditGates();
+
 setConfigFieldsEnabled(false);
 loadAgentConfig().finally(maybeOpenInstructionsOnEntry);

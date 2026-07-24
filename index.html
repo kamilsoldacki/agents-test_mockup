@@ -43,7 +43,11 @@
             </div>
           </header>
 
-          <div class="page-heading">
+          <div
+            class="page-heading edit-gated"
+            data-edit-gate
+            title="Click to edit agent settings"
+          >
             <div class="page-heading-row">
               <h1>Agent</h1>
               <span class="pill">Review</span>
@@ -198,7 +202,12 @@
 
       <div class="workspace">
         <div class="workspace-main">
-          <section class="editor-card" aria-labelledby="prompt-heading">
+          <section
+            class="editor-card edit-gated"
+            data-edit-gate
+            aria-labelledby="prompt-heading"
+            title="Click to edit"
+          >
             <div class="editor-card-head">
               <div class="editor-card-titles">
                 <h2 id="prompt-heading">System prompt</h2>
@@ -212,7 +221,12 @@
             <textarea class="prompt-body" id="systemPrompt" spellcheck="false"></textarea>
           </section>
 
-          <section class="editor-card" aria-labelledby="first-message-heading">
+          <section
+            class="editor-card edit-gated"
+            data-edit-gate
+            aria-labelledby="first-message-heading"
+            title="Click to edit"
+          >
             <div class="editor-card-head">
               <h2 id="first-message-heading">First message</h2>
             </div>
@@ -225,7 +239,12 @@
         </div>
 
         <aside class="workspace-rail" aria-label="Agent settings">
-          <section class="rail-section" aria-labelledby="voice-heading">
+          <section
+            class="rail-section edit-gated"
+            data-edit-gate
+            aria-labelledby="voice-heading"
+            title="Click to edit"
+          >
             <div class="rail-section-head">
               <div>
                 <div class="editor-card-titles">
@@ -309,7 +328,12 @@
             </div>
           </section>
 
-          <section class="rail-section" aria-labelledby="language-heading">
+          <section
+            class="rail-section edit-gated"
+            data-edit-gate
+            aria-labelledby="language-heading"
+            title="Click to edit"
+          >
             <div class="rail-section-head">
               <div>
                 <h2 id="language-heading">Language</h2>
@@ -327,7 +351,12 @@
             </label>
           </section>
 
-          <section class="rail-section" aria-labelledby="llm-heading">
+          <section
+            class="rail-section edit-gated"
+            data-edit-gate
+            aria-labelledby="llm-heading"
+            title="Click to edit"
+          >
             <div class="rail-section-head">
               <div>
                 <h2 id="llm-heading">LLM</h2>
@@ -424,7 +453,10 @@
             <p id="errorBox" class="error" hidden></p>
           </section>
 
-          <section class="editor-card tts-qc-card" aria-labelledby="tts-qc-heading">
+          <section
+            class="editor-card tts-qc-card"
+            aria-labelledby="tts-qc-heading"
+          >
             <div class="editor-card-head">
               <div class="editor-card-titles">
                 <h2 id="tts-qc-heading">Replay a sentence</h2>
