@@ -150,6 +150,40 @@ const TTS_LABELS = {
   eleven_multilingual_v2: "Eleven Multilingual v2",
 };
 
+/** Display names for ISO 639-1 codes used by Agents language / language_presets. */
+const LANGUAGE_LABELS = {
+  ar: "Arabic",
+  bg: "Bulgarian",
+  zh: "Chinese",
+  hr: "Croatian",
+  cs: "Czech",
+  da: "Danish",
+  nl: "Dutch",
+  en: "English",
+  fi: "Finnish",
+  fr: "French",
+  de: "German",
+  el: "Greek",
+  hi: "Hindi",
+  hu: "Hungarian",
+  id: "Indonesian",
+  it: "Italian",
+  ja: "Japanese",
+  ko: "Korean",
+  ms: "Malay",
+  no: "Norwegian",
+  pl: "Polish",
+  pt: "Portuguese",
+  ro: "Romanian",
+  ru: "Russian",
+  sk: "Slovak",
+  es: "Spanish",
+  sv: "Swedish",
+  tr: "Turkish",
+  uk: "Ukrainian",
+  vi: "Vietnamese",
+};
+
 /** Agents-only models have no standalone TTS API — map to the closest HTTP TTS model. */
 const TTS_QC_MODEL_FALLBACK = {
   eleven_v3_conversational: "eleven_v3",
@@ -324,6 +358,56 @@ function ensureSelectOption(select, value, label = value) {
   select.value = value;
 }
 
+function languageLabel(code) {
+  const key = String(code || "").trim().toLowerCase();
+  if (!key) return "";
+  return LANGUAGE_LABELS[key] || key.toUpperCase();
+}
+
+/**
+ * Languages available for an agent: default `agent.language` plus
+ * keys of `conversation_config.language_presets` (ElevenLabs Additional Languages).
+ */
+function collectAgentLanguages(agent) {
+  const cfg = agent?.conversation_config || {};
+  const primary = String(cfg.agent?.language ?? "").trim().toLowerCase();
+  const presets = cfg.language_presets;
+  const codes = new Set();
+  if (primary) codes.add(primary);
+  if (presets && typeof presets === "object" && !Array.isArray(presets)) {
+    for (const key of Object.keys(presets)) {
+      const code = String(key || "").trim().toLowerCase();
+      if (code) codes.add(code);
+    }
+  }
+  return [...codes].sort((a, b) => languageLabel(a).localeCompare(languageLabel(b)));
+}
+
+/** Replace Language <select> options from agent config; select default language. */
+function rebuildLanguageSelect(languages, selected) {
+  const select = els.languageSelect;
+  if (!select) return;
+  const codes = Array.isArray(languages)
+    ? languages.map((c) => String(c || "").trim().toLowerCase()).filter(Boolean)
+    : [];
+  const unique = [...new Set(codes)];
+  select.innerHTML = "";
+  for (const code of unique) {
+    const opt = document.createElement("option");
+    opt.value = code;
+    opt.textContent = languageLabel(code);
+    select.appendChild(opt);
+  }
+  const pick = String(selected || "").trim().toLowerCase();
+  if (pick && unique.includes(pick)) {
+    select.value = pick;
+  } else if (unique.length) {
+    select.selectedIndex = 0;
+  } else {
+    select.selectedIndex = -1;
+  }
+}
+
 function setBadge(el, source) {
   if (!el) return;
   el.classList.remove("badge-live", "badge-error", "badge-mock", "badge-muted");
@@ -393,7 +477,7 @@ function clearFormToEmptyState() {
     els.systemPrompt.defaultValue = "";
     els.firstMessage.value = "";
     els.voiceId.value = "";
-    els.languageSelect.selectedIndex = -1;
+    rebuildLanguageSelect([], "");
     els.llmSelect.selectedIndex = -1;
     els.ttsModelSelect.selectedIndex = -1;
     sessionVoiceVolume = 0;
@@ -418,7 +502,7 @@ function applyLoadedDefaultsToForm() {
 
   const d = loadedDefaults;
   withSuppressedClientChoiceGuard(() => {
-    if (d.language) ensureSelectOption(els.languageSelect, d.language);
+    rebuildLanguageSelect(d.languages, d.language);
     els.systemPrompt.defaultValue = d.prompt || "";
     els.systemPrompt.value = els.systemPrompt.defaultValue;
     els.firstMessage.value = d.firstMessage || "";
@@ -721,11 +805,14 @@ function mapAgentPayload(agent, widget) {
     "";
 
   const toNum = (v) => (v == null || v === "" ? null : Number(v));
+  const language = String(agentCfg.language ?? "").trim().toLowerCase();
+  const languages = collectAgentLanguages(agent);
 
   return {
     prompt: String(promptRaw).trim(),
     firstMessage: agentCfg.first_message ?? "",
-    language: agentCfg.language ?? "",
+    language,
+    languages,
     llm: (typeof promptObj === "object" && promptObj.llm) || "",
     voice: {
       volume: toNum(widgetCfg.volume ?? tts.volume),
@@ -1146,9 +1233,7 @@ async function generateTtsQc() {
 els.resetAgentConfigBtn.addEventListener("click", () => {
   if (!loadedDefaults) return;
   withSuppressedClientChoiceGuard(() => {
-    if (loadedDefaults.language) {
-      ensureSelectOption(els.languageSelect, loadedDefaults.language);
-    }
+    rebuildLanguageSelect(loadedDefaults.languages, loadedDefaults.language);
     if (loadedDefaults.llm) {
       ensureSelectOption(
         els.llmSelect,
