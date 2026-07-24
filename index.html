@@ -557,6 +557,31 @@
       </div>
     </div>
 
+    <div
+      id="alertModal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="alert-heading"
+      hidden
+    >
+      <div class="modal-backdrop" data-close-alert tabindex="-1"></div>
+      <div class="modal-panel confirm-panel" role="document">
+        <div class="modal-head">
+          <h2 id="alert-heading">Agent unavailable</h2>
+          <button type="button" id="alertCloseBtn" class="modal-close" aria-label="Close">
+            ×
+          </button>
+        </div>
+        <p class="confirm-copy" id="alertMessage">
+          Agent not found or you don't have access to it.
+        </p>
+        <div class="modal-actions">
+          <button type="button" id="alertOkBtn" class="btn btn-primary">OK</button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

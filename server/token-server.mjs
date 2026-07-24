@@ -13,10 +13,23 @@ const app = express();
 const PORT = Number(process.env.PORT || process.env.TOKEN_SERVER_PORT || 3456);
 const HOST = process.env.HOST || "0.0.0.0";
 
-const DEFAULT_AGENT_ID =
-  process.env.AGENT_ID || "agent_7201ky2fs4xtfwg9tn2x641n318p";
-const BRANCH_ID =
-  process.env.BRANCH_ID || "agtbrch_4301ky2fs5b2f3rs50hn9sq987d7";
+/** Per-residency defaults. AGENT_ID / BRANCH_ID keep EU back-compat; *_GLOBAL for Global. */
+const DEFAULT_AGENT_IDS = {
+  eu: process.env.AGENT_ID || "agent_7201ky2fs4xtfwg9tn2x641n318p",
+  global:
+    process.env.AGENT_ID_GLOBAL || "agent_0101kp3evekhf25tpfv24b3kf37w",
+};
+
+const DEFAULT_BRANCH_IDS = {
+  eu:
+    process.env.BRANCH_ID === "false"
+      ? ""
+      : process.env.BRANCH_ID || "agtbrch_4301ky2fs5b2f3rs50hn9sq987d7",
+  global:
+    process.env.BRANCH_ID === "false" || process.env.BRANCH_ID_GLOBAL === "false"
+      ? ""
+      : process.env.BRANCH_ID_GLOBAL || "agtbrch_5401kp3evewjfdzvg4pzgd3cxcse",
+};
 
 /**
  * Region endpoints + API keys:
@@ -89,7 +102,13 @@ function resolveAgentId(req) {
   if (/^agent_[a-zA-Z0-9]+$/.test(fromQuery)) {
     return fromQuery;
   }
-  return DEFAULT_AGENT_ID;
+  const residency = resolveResidency(req);
+  return DEFAULT_AGENT_IDS[residency] || DEFAULT_AGENT_IDS.eu;
+}
+
+function resolveBranchId(residency) {
+  const key = normalizeResidency(residency) || "eu";
+  return DEFAULT_BRANCH_IDS[key] || "";
 }
 
 function missingKeyError(region) {
@@ -140,7 +159,9 @@ app.get("/api/health", (_req, res) => {
           ""
       ).trim()
     ),
-    agent_id: DEFAULT_AGENT_ID,
+    agent_id: DEFAULT_AGENT_IDS.eu,
+    agent_ids: { ...DEFAULT_AGENT_IDS },
+    branch_ids: { ...DEFAULT_BRANCH_IDS },
     regions: {
       global: REGION_PRESETS.global.origin,
       eu: REGION_PRESETS.eu.origin,
@@ -151,16 +172,17 @@ app.get("/api/health", (_req, res) => {
 /**
  * WebRTC token with optional branch_id (see API: GET /v1/convai/conversation/token).
  * If the agent is public, the matching regional key may be omitted and the request is still attempted.
- * Optional query: agent_id, residency=global|eu (falls back to env AGENT_ID / EU).
+ * Optional query: agent_id, residency=global|eu (falls back to per-region defaults).
  */
 app.get("/api/token", async (req, res) => {
   try {
     const agentId = resolveAgentId(req);
     const region = resolveRegion(req);
+    const branchId = resolveBranchId(region.residency);
     const url = new URL(`${region.origin}/v1/convai/conversation/token`);
     url.searchParams.set("agent_id", agentId);
-    if (BRANCH_ID) {
-      url.searchParams.set("branch_id", BRANCH_ID);
+    if (branchId) {
+      url.searchParams.set("branch_id", branchId);
     }
 
     const upstream = await fetch(url.toString(), {
@@ -186,12 +208,13 @@ app.get("/api/token", async (req, res) => {
 app.get("/api/agent-config", async (req, res) => {
   const agentId = resolveAgentId(req);
   const region = resolveRegion(req);
+  const branchId = resolveBranchId(region.residency);
 
   if (!region.apiKey) {
     return res.status(503).json({
       error: missingKeyError(region),
       agent_id: agentId,
-      branch_id: BRANCH_ID || null,
+      branch_id: branchId || null,
       residency: region.residency,
       key_env: region.keyEnv,
     });
@@ -199,13 +222,13 @@ app.get("/api/agent-config", async (req, res) => {
 
   try {
     const agentUrl = new URL(`${region.origin}/v1/convai/agents/${agentId}`);
-    if (BRANCH_ID) {
-      agentUrl.searchParams.set("branch_id", BRANCH_ID);
+    if (branchId) {
+      agentUrl.searchParams.set("branch_id", branchId);
     }
 
     const widgetUrl = new URL(`${region.origin}/v1/convai/agents/${agentId}/widget`);
-    if (BRANCH_ID) {
-      widgetUrl.searchParams.set("branch_id", BRANCH_ID);
+    if (branchId) {
+      widgetUrl.searchParams.set("branch_id", branchId);
     }
 
     const headers = apiHeaders(region.apiKey);
@@ -241,7 +264,7 @@ app.get("/api/agent-config", async (req, res) => {
 
     res.json({
       agent_id: agentId,
-      branch_id: BRANCH_ID || null,
+      branch_id: branchId || null,
       residency: region.residency,
       agent,
       widget,
@@ -355,7 +378,7 @@ app.listen(PORT, HOST, () => {
   const euKey = Boolean(String(process.env.XI_API_KEY_EU || process.env.XI_API_KEY || "").trim());
   const globalKey = Boolean(String(process.env.XI_API_KEY_GLOBAL || "").trim());
   console.log(
-    `Token server http://${HOST}:${PORT} (default agent ${DEFAULT_AGENT_ID}, dual-region)`
+    `Token server http://${HOST}:${PORT} (defaults eu=${DEFAULT_AGENT_IDS.eu}, global=${DEFAULT_AGENT_IDS.global})`
   );
   console.log(
     globalKey

@@ -1,13 +1,24 @@
 import { Conversation } from "@elevenlabs/client";
 import "./styles.css";
 
-const DEFAULT_AGENT_ID = "agent_7201ky2fs4xtfwg9tn2x641n318p";
-/** Mutable: set from the Agent ID field (or URL ?agent_id=) before loading config. */
-let currentAgentId = DEFAULT_AGENT_ID;
-const BRANCH_ID =
-  import.meta.env.VITE_BRANCH_ID === "false"
+/** Per-platform placeholder agents (EU German agent; Global from ElevenLabs talk-to). */
+const REGION_DEFAULT_AGENT_IDS = {
+  eu: "agent_7201ky2fs4xtfwg9tn2x641n318p",
+  global: "agent_0101kp3evekhf25tpfv24b3kf37w",
+};
+
+const BRANCH_DISABLED = import.meta.env.VITE_BRANCH_ID === "false";
+/** Per-platform branch for token/agent-config; VITE_BRANCH_ID=false disables all. */
+const REGION_DEFAULT_BRANCH_IDS = {
+  eu: BRANCH_DISABLED
     ? ""
-    : (import.meta.env.VITE_BRANCH_ID ?? "agtbrch_4301ky2fs5b2f3rs50hn9sq987d7");
+    : (import.meta.env.VITE_BRANCH_ID ?? "agtbrch_4301ky2fs5b2f3rs50hn9sq987d7"),
+  global:
+    BRANCH_DISABLED || import.meta.env.VITE_BRANCH_ID_GLOBAL === "false"
+      ? ""
+      : (import.meta.env.VITE_BRANCH_ID_GLOBAL ??
+        "agtbrch_5401kp3evewjfdzvg4pzgd3cxcse"),
+};
 
 /** Platform / data residency — paired with server XI_API_KEY_GLOBAL vs XI_API_KEY_EU. */
 const RESIDENCY_STORAGE_KEY = "productions-elevenlabs-residency";
@@ -41,6 +52,16 @@ function normalizeResidency(value) {
   return "";
 }
 
+function defaultAgentIdFor(residency) {
+  const key = normalizeResidency(residency) || "eu";
+  return REGION_DEFAULT_AGENT_IDS[key] || REGION_DEFAULT_AGENT_IDS.eu;
+}
+
+function branchIdFor(residency) {
+  const key = normalizeResidency(residency) || "eu";
+  return REGION_DEFAULT_BRANCH_IDS[key] ?? "";
+}
+
 function readAgentIdFromUrl() {
   try {
     const fromQuery = new URLSearchParams(window.location.search).get("agent_id");
@@ -69,10 +90,11 @@ function readResidencyFromStorage() {
   }
 }
 
-currentAgentId = readAgentIdFromUrl() || DEFAULT_AGENT_ID;
 /** Mutable: Global vs EU — URL ?residency= wins over localStorage; default EU (legacy). */
 let currentResidency =
   readResidencyFromUrl() || readResidencyFromStorage() || "eu";
+/** Mutable: set from the Agent ID field (or URL ?agent_id=) before loading config. */
+let currentAgentId = readAgentIdFromUrl() || defaultAgentIdFor(currentResidency);
 
 function getResidencyEndpoints() {
   return REGION_ENDPOINTS[currentResidency] || REGION_ENDPOINTS.eu;
@@ -234,6 +256,11 @@ const els = {
   confirmOkBtn: document.getElementById("confirmOkBtn"),
   confirmCancelBtn: document.getElementById("confirmCancelBtn"),
   confirmCloseBtn: document.getElementById("confirmCloseBtn"),
+  alertModal: document.getElementById("alertModal"),
+  alertHeading: document.getElementById("alert-heading"),
+  alertMessage: document.getElementById("alertMessage"),
+  alertOkBtn: document.getElementById("alertOkBtn"),
+  alertCloseBtn: document.getElementById("alertCloseBtn"),
 };
 
 let conversation = null;
@@ -550,8 +577,9 @@ async function fetchConversationTokenFromBrowser() {
   const { origin } = getResidencyEndpoints();
   const url = new URL(`${origin}/v1/convai/conversation/token`);
   url.searchParams.set("agent_id", currentAgentId);
-  if (BRANCH_ID) {
-    url.searchParams.set("branch_id", BRANCH_ID);
+  const branchId = branchIdFor(currentResidency);
+  if (branchId) {
+    url.searchParams.set("branch_id", branchId);
   }
   url.searchParams.set("source", CONVAI_TOKEN_SOURCE);
   url.searchParams.set("version", CONVAI_TOKEN_VERSION);
@@ -722,7 +750,124 @@ function mapAgentPayload(agent, widget) {
   };
 }
 
-function markConfigUnavailable(reason) {
+const AGENT_ACCESS_ERROR_TYPES = new Set([
+  "not_found",
+  "document_not_found",
+  "forbidden",
+  "unauthorized",
+  "permission_denied",
+  "access_denied",
+]);
+
+/** Parse upstream / proxy error bodies that may be JSON strings or nested detail objects. */
+function parseApiErrorPayload(raw) {
+  if (raw == null || raw === "") {
+    return { message: "", type: null };
+  }
+
+  let value = raw;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return { message: "", type: null };
+    try {
+      value = JSON.parse(trimmed);
+    } catch {
+      return { message: trimmed.slice(0, 280), type: null };
+    }
+  }
+
+  if (typeof value !== "object") {
+    return { message: String(value).slice(0, 280), type: null };
+  }
+
+  const detail = value.detail ?? value.error ?? value;
+  if (typeof detail === "string") {
+    return parseApiErrorPayload(detail);
+  }
+  if (detail && typeof detail === "object") {
+    const type =
+      typeof detail.type === "string"
+        ? detail.type
+        : typeof detail.status === "string"
+          ? detail.status
+          : null;
+    const message =
+      (typeof detail.message === "string" && detail.message) ||
+      (typeof detail.msg === "string" && detail.msg) ||
+      (typeof value.message === "string" && value.message) ||
+      "";
+    return { message: message.slice(0, 280), type };
+  }
+
+  const message =
+    (typeof value.message === "string" && value.message) ||
+    (typeof value.error === "string" && value.error) ||
+    "";
+  return {
+    message: message.slice(0, 280),
+    type: typeof value.type === "string" ? value.type : null,
+  };
+}
+
+function isAgentAccessError(httpStatus, parsed) {
+  if (httpStatus === 404 || httpStatus === 403 || httpStatus === 401) return true;
+  if (parsed?.type && AGENT_ACCESS_ERROR_TYPES.has(String(parsed.type).toLowerCase())) {
+    return true;
+  }
+  const haystack = `${parsed?.message || ""} ${parsed?.type || ""}`.toLowerCase();
+  return (
+    haystack.includes("not_found") ||
+    haystack.includes("document_not_found") ||
+    haystack.includes("does not exist") ||
+    haystack.includes("not found")
+  );
+}
+
+function residencyKeyHint() {
+  return currentResidency === "global"
+    ? "XI_API_KEY_GLOBAL"
+    : "XI_API_KEY_EU (or legacy XI_API_KEY)";
+}
+
+/**
+ * Map agent-config failure into UI-facing copy without dumping raw JSON.
+ * @returns {{ kind: "agent_missing" | "other", statusLine: string, banner: string | null, modalTitle?: string, modalMessage?: string }}
+ */
+function describeAgentConfigFailure(rawReason, httpStatus) {
+  const parsed = parseApiErrorPayload(rawReason);
+
+  if (isAgentAccessError(httpStatus, parsed)) {
+    return {
+      kind: "agent_missing",
+      statusLine: "Agent not found.",
+      banner: null,
+      modalTitle: "Agent unavailable",
+      modalMessage: "Agent not found or you don't have access to it.",
+    };
+  }
+
+  if (httpStatus === 503) {
+    const keyHint = residencyKeyHint();
+    const detail = parsed.message || `${keyHint} missing or agent fetch unavailable`;
+    return {
+      kind: "other",
+      statusLine: "Could not load live settings.",
+      banner: `Live agent config unavailable: ${detail}. Ensure ${keyHint} is set on the server for ${getResidencyEndpoints().label} and the API can reach ElevenLabs.`,
+    };
+  }
+
+  const detail =
+    parsed.message ||
+    (httpStatus ? `Agent fetch HTTP ${httpStatus}` : "Token server unreachable");
+
+  return {
+    kind: "other",
+    statusLine: "Could not load live settings.",
+    banner: `Live agent config unavailable: ${detail}. No repository mock defaults are used.`,
+  };
+}
+
+function markConfigUnavailable(rawReason, httpStatus = 0) {
   liveConfigLoaded = false;
   loadedDefaults = null;
   configSource = { agent: "error", voice: "error" };
@@ -730,15 +875,14 @@ function markConfigUnavailable(reason) {
   setConfigFieldsEnabled(false);
   setBadge(els.agentConfigBadge, "error");
   setBadge(els.voiceConfigBadge, "error");
-  els.agentFetchStatus.textContent = `Could not load live settings: ${reason}`;
   setCallUi("idle");
-  const keyHint =
-    currentResidency === "global"
-      ? "XI_API_KEY_GLOBAL"
-      : "XI_API_KEY_EU (or legacy XI_API_KEY)";
-  showError(
-    `Live agent config unavailable: ${reason}. Ensure ${keyHint} is set on the server for ${getResidencyEndpoints().label} and the API can reach ElevenLabs. No repository mock defaults are used.`
-  );
+
+  const ui = describeAgentConfigFailure(rawReason, httpStatus);
+  els.agentFetchStatus.textContent = ui.statusLine;
+  showError(ui.banner);
+  if (ui.kind === "agent_missing" && ui.modalMessage) {
+    showAlertModal(ui.modalMessage, ui.modalTitle);
+  }
 }
 
 async function loadAgentConfig() {
@@ -766,7 +910,7 @@ async function loadAgentConfig() {
         (res.status === 503
           ? `${currentResidency === "global" ? "XI_API_KEY_GLOBAL" : "XI_API_KEY_EU"} missing or agent fetch unavailable`
           : `Agent fetch HTTP ${res.status}`);
-      markConfigUnavailable(reason);
+      markConfigUnavailable(reason, res.status);
       return;
     }
 
@@ -786,13 +930,14 @@ async function loadAgentConfig() {
     setConfigFieldsEnabled(true);
     const regionLabel = getResidencyEndpoints().label;
     els.agentFetchStatus.textContent = `Loaded live from agent ${data.agent_id || currentAgentId} · ${regionLabel}${
-      data.branch_id || BRANCH_ID ? " · branch" : ""
+      data.branch_id || branchIdFor(currentResidency) ? " · branch" : ""
     }.`;
     setCallUi("idle");
   } catch (err) {
     console.warn(err);
     markConfigUnavailable(
-      err instanceof Error ? err.message : "Token server unreachable"
+      err instanceof Error ? err.message : "Token server unreachable",
+      0
     );
   }
 }
@@ -817,7 +962,18 @@ async function reloadAgentFromInput() {
 async function onResidencyChange() {
   const next = normalizeResidency(els.residencySelect?.value) || "eu";
   if (next === currentResidency) return;
+  const previous = currentResidency;
   persistQcRatings();
+
+  // Soft-switch: only replace Agent ID when it still matches the previous region's default.
+  const typed = normalizeAgentId(els.agentIdInput?.value) || currentAgentId;
+  const nextDefault = defaultAgentIdFor(next);
+  if (!typed || typed === defaultAgentIdFor(previous)) {
+    currentAgentId = nextDefault;
+    if (els.agentIdInput) els.agentIdInput.value = nextDefault;
+  }
+  if (els.agentIdInput) els.agentIdInput.placeholder = nextDefault;
+
   persistResidencyChoice(next);
   restoreQcRatings();
   validateQcCommentsRequired();
@@ -1067,6 +1223,38 @@ function closeConfirmModal(result) {
   resolve?.(result);
 }
 
+function closeAlertModal() {
+  if (!els.alertModal || els.alertModal.hidden) return;
+  els.alertModal.hidden = true;
+  if (activeModal === "alert") {
+    activeModal = null;
+    setAppBlurred(false);
+  }
+  if (pendingInstructionsOnEntry) {
+    pendingInstructionsOnEntry = false;
+    maybeOpenInstructionsOnEntry();
+  }
+}
+
+function showAlertModal(message, title = "Agent unavailable") {
+  if (!els.alertModal) {
+    window.alert(message);
+    return;
+  }
+  if (activeModal === "confirm") closeConfirmModal(false);
+  // Soft-close instructions without persisting dismissal — alert takes priority.
+  if (activeModal === "instructions" && els.instructionsModal && !els.instructionsModal.hidden) {
+    els.instructionsModal.hidden = true;
+    activeModal = null;
+  }
+  if (els.alertHeading) els.alertHeading.textContent = title;
+  if (els.alertMessage) els.alertMessage.textContent = message;
+  els.alertModal.hidden = false;
+  activeModal = "alert";
+  setAppBlurred(true);
+  els.alertOkBtn?.focus();
+}
+
 function askClientChoiceConfirm(fieldLabel) {
   return new Promise((resolve) => {
     if (!els.confirmModal) {
@@ -1210,6 +1398,12 @@ els.confirmCancelBtn?.addEventListener("click", () => closeConfirmModal(false));
 els.confirmCloseBtn?.addEventListener("click", () => closeConfirmModal(false));
 els.confirmModal?.querySelector("[data-close-confirm]")?.addEventListener("click", () =>
   closeConfirmModal(false)
+);
+
+els.alertOkBtn?.addEventListener("click", () => closeAlertModal());
+els.alertCloseBtn?.addEventListener("click", () => closeAlertModal());
+els.alertModal?.querySelector("[data-close-alert]")?.addEventListener("click", () =>
+  closeAlertModal()
 );
 
 els.ttsQcGenerateBtn.addEventListener("click", generateTtsQc);
@@ -1366,6 +1560,7 @@ function persistInstructionsDismissed() {
 function openInstructionsModal() {
   if (!els.instructionsModal) return;
   if (activeModal === "confirm") closeConfirmModal(false);
+  if (activeModal === "alert") closeAlertModal();
   els.instructionsModal.hidden = false;
   activeModal = "instructions";
   setAppBlurred(true);
@@ -1383,10 +1578,15 @@ function closeInstructionsModal() {
   els.openInstructionsBtn?.focus();
 }
 
+let pendingInstructionsOnEntry = false;
+
 function maybeOpenInstructionsOnEntry() {
-  if (!isInstructionsDismissed()) {
-    openInstructionsModal();
+  if (isInstructionsDismissed()) return;
+  if (activeModal === "alert") {
+    pendingInstructionsOnEntry = true;
+    return;
   }
+  openInstructionsModal();
 }
 
 els.openInstructionsBtn?.addEventListener("click", openInstructionsModal);
@@ -1400,12 +1600,19 @@ document.addEventListener("keydown", (event) => {
     closeConfirmModal(false);
     return;
   }
+  if (activeModal === "alert") {
+    closeAlertModal();
+    return;
+  }
   if (activeModal === "instructions") {
     closeInstructionsModal();
   }
 });
 
-if (els.agentIdInput) els.agentIdInput.value = currentAgentId;
+if (els.agentIdInput) {
+  els.agentIdInput.value = currentAgentId;
+  els.agentIdInput.placeholder = defaultAgentIdFor(currentResidency);
+}
 persistResidencyChoice(currentResidency);
 
 els.loadAgentBtn?.addEventListener("click", () => {
