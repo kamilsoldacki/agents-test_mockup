@@ -491,8 +491,8 @@ body {
 }
 
 .edit-gated:not(.is-unlocked) {
-  opacity: 0.58;
-  filter: saturate(0.75);
+  opacity: 0.82;
+  filter: saturate(0.92);
   cursor: pointer;
 }
 
@@ -502,13 +502,9 @@ body {
   inset: 0;
   z-index: 2;
   border-radius: inherit;
-  background: rgba(249, 250, 251, 0.45);
-  box-shadow: inset 0 0 0 1px rgba(229, 231, 235, 0.8);
+  background: rgba(249, 250, 251, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(229, 231, 235, 0.35);
   pointer-events: auto;
-}
-
-.page-heading.edit-gated:not(.is-unlocked)::after {
-  border-radius: var(--radius-lg);
 }
 
 .edit-gated.is-unlocked {
