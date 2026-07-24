@@ -1500,7 +1500,18 @@ function qcCacheKey() {
   return `productions-qc-ratings:${currentResidency}:${currentAgentId}`;
 }
 const QC_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-const QC_SCORE_NAMES = ["qcAccent", "qcPronunciation", "qcNaturalness", "qcArtifacts"];
+/** 1–3 scoring dimensions (comments required when any is 1). */
+const QC_SCORE_NAMES = [
+  "qcAccent",
+  "qcPronunciation",
+  "qcNaturalness",
+  "qcTurnTaking",
+  "qcArtifacts",
+  "qcUnderstanding",
+  "qcLanguageIntegrity",
+];
+/** Non-score radios still persisted with the QC form. */
+const QC_EXTRA_RADIO_NAMES = ["qcShip", "qcRepeatCount", "qcReplayTag"];
 
 function getCheckedRadioValue(name) {
   const checked = document.querySelector(`input[name="${name}"]:checked`);
@@ -1523,10 +1534,16 @@ function normalizeWordingIssue(value) {
 
 function readQcFormState() {
   return {
+    ship: getCheckedRadioValue("qcShip"),
     accent: getCheckedRadioValue("qcAccent"),
     pronunciation: getCheckedRadioValue("qcPronunciation"),
     naturalness: getCheckedRadioValue("qcNaturalness"),
+    turnTaking: getCheckedRadioValue("qcTurnTaking"),
     artifacts: getCheckedRadioValue("qcArtifacts"),
+    understanding: getCheckedRadioValue("qcUnderstanding"),
+    languageIntegrity: getCheckedRadioValue("qcLanguageIntegrity"),
+    repeatCount: getCheckedRadioValue("qcRepeatCount"),
+    replayTag: getCheckedRadioValue("qcReplayTag"),
     wordingIssue: (els.qcWordingIssue?.value || "").trim(),
     comments: (els.qcComments?.value || "").trim(),
   };
@@ -1534,10 +1551,16 @@ function readQcFormState() {
 
 function applyQcFormState(state) {
   if (!state) return;
+  setCheckedRadioValue("qcShip", state.ship);
   setCheckedRadioValue("qcAccent", state.accent);
   setCheckedRadioValue("qcPronunciation", state.pronunciation);
   setCheckedRadioValue("qcNaturalness", state.naturalness);
+  setCheckedRadioValue("qcTurnTaking", state.turnTaking);
   setCheckedRadioValue("qcArtifacts", state.artifacts);
+  setCheckedRadioValue("qcUnderstanding", state.understanding);
+  setCheckedRadioValue("qcLanguageIntegrity", state.languageIntegrity);
+  setCheckedRadioValue("qcRepeatCount", state.repeatCount);
+  setCheckedRadioValue("qcReplayTag", state.replayTag);
   if (els.qcWordingIssue) {
     els.qcWordingIssue.value = normalizeWordingIssue(state.wordingIssue);
   }
@@ -1545,11 +1568,23 @@ function applyQcFormState(state) {
 }
 
 function hasAnyScoreOfOne(state = readQcFormState()) {
-  return [state.accent, state.pronunciation, state.naturalness, state.artifacts].includes("1");
+  return [
+    state.accent,
+    state.pronunciation,
+    state.naturalness,
+    state.turnTaking,
+    state.artifacts,
+    state.understanding,
+    state.languageIntegrity,
+  ].includes("1");
+}
+
+function needsQcComments(state = readQcFormState()) {
+  return hasAnyScoreOfOne(state) || state.ship === "no";
 }
 
 function validateQcCommentsRequired() {
-  const needsComments = hasAnyScoreOfOne();
+  const needsComments = needsQcComments();
   const comments = (els.qcComments?.value || "").trim();
   const invalid = needsComments && !comments;
   if (els.qcCommentsHint) els.qcCommentsHint.hidden = !invalid;
@@ -1575,10 +1610,16 @@ function persistQcRatings() {
 
 function clearQcForm() {
   applyQcFormState({
+    ship: "",
     accent: "",
     pronunciation: "",
     naturalness: "",
+    turnTaking: "",
     artifacts: "",
+    understanding: "",
+    languageIntegrity: "",
+    repeatCount: "",
+    replayTag: "",
     wordingIssue: "",
     comments: "",
   });
@@ -1613,7 +1654,7 @@ function onQcFormChange() {
   persistQcRatings();
 }
 
-for (const name of QC_SCORE_NAMES) {
+for (const name of [...QC_SCORE_NAMES, ...QC_EXTRA_RADIO_NAMES]) {
   document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
     input.addEventListener("change", onQcFormChange);
   });

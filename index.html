@@ -84,6 +84,21 @@
         </div>
 
         <aside class="qc-ratings" aria-labelledby="qc-ratings-heading">
+          <fieldset class="qc-verdict" aria-labelledby="qc-verdict-heading">
+            <legend id="qc-verdict-heading" class="qc-verdict-legend">
+              Ship to client?
+              <span class="qc-verdict-sub">Native-quality go / no-go for this language</span>
+            </legend>
+            <div class="qc-score-options qc-verdict-options">
+              <label class="qc-verdict-yes"
+                ><input type="radio" name="qcShip" value="yes" /> Yes — ship</label
+              >
+              <label class="qc-verdict-no"
+                ><input type="radio" name="qcShip" value="no" /> No — hold</label
+              >
+            </div>
+          </fieldset>
+
           <details class="qc-legend">
             <summary class="qc-legend-summary">
               <h2 id="qc-ratings-heading">QC ratings</h2>
@@ -94,40 +109,67 @@
                 <strong>Scale</strong> — 1 = needs work, 2 = acceptable, 3 = native-quality
               </p>
               <p>
-                <strong>Accent nativeness</strong> — Does this sound like a native speaker of the
-                language you are reviewing?
+                <strong>Accent nativeness</strong> — 1 = clearly non-native throughout; 3 =
+                indistinguishable from a native speaker. Example: persistent L2 rhythm on every
+                sentence → 1.
               </p>
               <p>
                 <strong>Pronunciation</strong> — Numbers, prices, dates, proper names and brands
-                (e.g. MyMagenta, Deutsche Telekom) — are they said correctly?
+                (e.g. MyMagenta, Deutsche Telekom). 1 = systematic misreads; 3 = always correct.
+                Example: “29,90 €” read as English twenty-nine ninety → 1.
               </p>
               <p>
-                <strong>Conversational naturalness</strong> — Intonation, pacing, pauses, sentence
-                endings: does it feel like a real conversation, or flat / tutorial-like?
+                <strong>Conversational naturalness</strong> — Prosody only: intonation, tempo,
+                sentence endings (not turn-taking). 1 = flat / tutorial-like; 3 = natural spoken
+                delivery. Example: every sentence ends with the same rising tone → 1.
+              </p>
+              <p>
+                <strong>Turn-taking / responsiveness</strong> — Conversational dynamics: did the
+                agent interrupt, leave awkward silence, reply late, or refuse barge-in? 1 =
+                regularly broken timing; 3 = smooth, interruptible dialogue. Example: agent talks
+                over you mid-question, or 3+ second dead air before answering → 1.
               </p>
               <p>
                 <strong>Voice artifacts / loudness</strong> — Distortion, harsh compression,
-                shouting, fatiguing volume (1 = worst)
+                shouting, fatiguing volume. 1 = worst; 3 = clean and comfortable.
               </p>
               <p>
-                <strong>Wording / content issue</strong> — Note when the problem is
-                <em>what</em> was said (awkward or wrong phrasing), not <em>how</em> it was spoken.
-                Leave a short free-form example in the wording field.
+                <strong>Did the agent understand you?</strong> — Reviewer-side ASR signal. 1 =
+                often wrong / many repeats; 3 = understood first time. Track how many times you had
+                to repeat. Example: agent answers a different question twice in a row → 1.
               </p>
               <p>
-                <strong>Comments</strong> — Required for any score of 1: briefly say what went wrong
-                so the team can act on it. If you suggest a system prompt change, write
+                <strong>Language integrity</strong> — Stayed in the assigned language with no
+                unwanted switching or foreign-accent bleed. 1 = frequent wrong-language slips; 3 =
+                fully consistent. Example: German session drops English words or a US accent mid
+                turn → 1.
+              </p>
+              <p>
+                <strong>One-off vs repeatable</strong> — After
+                <em>Replay a sentence</em>: tag whether the error came back (bug) or was a one-off
+                slip.
+              </p>
+              <p>
+                <strong>Wording / content issue</strong> — Awkward or wrong
+                <em>phrasing</em> only — not factual correctness or task success (those are out of
+                scope). Leave a short example in the wording field.
+              </p>
+              <p>
+                <strong>Comments</strong> — Required for any score of 1 or a No ship verdict:
+                briefly say what went wrong. If you suggest a system prompt change, write
                 <em>why</em> here.
               </p>
               <p>
-                <strong>Scope</strong> — Only review languages you are native or fluent in. Run
-                2–3 calls of 5–7 minutes each. Judge delivery and language quality — not factual
-                accuracy; prices and product details are invented on purpose.
+                <strong>Scope (intentional)</strong> — Evaluate
+                <em>delivery, language quality, and conversational behavior</em> — not factual
+                correctness or whether the agent completed the customer task. Prices and product
+                details are invented on purpose. Only review languages you are native or fluent in.
+                Run 2–3 calls of 5–7 minutes each.
               </p>
             </div>
           </details>
 
-          <div class="qc-ratings-grid" role="group" aria-label="Voice quality scores">
+          <div class="qc-ratings-grid" role="group" aria-label="Voice and agent quality scores">
             <fieldset class="qc-score">
               <legend>Accent nativeness</legend>
               <div class="qc-score-options">
@@ -145,11 +187,19 @@
               </div>
             </fieldset>
             <fieldset class="qc-score">
-              <legend>Conversational naturalness</legend>
+              <legend>Conversational naturalness (prosody)</legend>
               <div class="qc-score-options">
                 <label><input type="radio" name="qcNaturalness" value="1" /> 1</label>
                 <label><input type="radio" name="qcNaturalness" value="2" /> 2</label>
                 <label><input type="radio" name="qcNaturalness" value="3" /> 3</label>
+              </div>
+            </fieldset>
+            <fieldset class="qc-score">
+              <legend>Turn-taking / responsiveness</legend>
+              <div class="qc-score-options">
+                <label><input type="radio" name="qcTurnTaking" value="1" /> 1</label>
+                <label><input type="radio" name="qcTurnTaking" value="2" /> 2</label>
+                <label><input type="radio" name="qcTurnTaking" value="3" /> 3</label>
               </div>
             </fieldset>
             <fieldset class="qc-score">
@@ -160,18 +210,43 @@
                 <label><input type="radio" name="qcArtifacts" value="3" /> 3</label>
               </div>
             </fieldset>
+            <fieldset class="qc-score">
+              <legend>Did the agent understand you?</legend>
+              <div class="qc-score-options">
+                <label><input type="radio" name="qcUnderstanding" value="1" /> 1</label>
+                <label><input type="radio" name="qcUnderstanding" value="2" /> 2</label>
+                <label><input type="radio" name="qcUnderstanding" value="3" /> 3</label>
+              </div>
+            </fieldset>
+            <fieldset class="qc-score">
+              <legend>Language integrity</legend>
+              <div class="qc-score-options">
+                <label><input type="radio" name="qcLanguageIntegrity" value="1" /> 1</label>
+                <label><input type="radio" name="qcLanguageIntegrity" value="2" /> 2</label>
+                <label><input type="radio" name="qcLanguageIntegrity" value="3" /> 3</label>
+              </div>
+            </fieldset>
+            <fieldset class="qc-score qc-repeats">
+              <legend>Times you had to repeat</legend>
+              <div class="qc-score-options">
+                <label><input type="radio" name="qcRepeatCount" value="0" /> 0</label>
+                <label><input type="radio" name="qcRepeatCount" value="1" /> 1</label>
+                <label><input type="radio" name="qcRepeatCount" value="2" /> 2</label>
+                <label><input type="radio" name="qcRepeatCount" value="3+" /> 3+</label>
+              </div>
+            </fieldset>
           </div>
 
           <div class="qc-notes-row">
             <div class="field qc-wording-field">
               <label class="field-label" for="qcWordingIssue">
-                Wording / content issue? (phrasing, not voice)
+                Wording / content issue? (phrasing only — not task success)
               </label>
               <textarea
                 id="qcWordingIssue"
                 class="input-textarea"
                 rows="2"
-                placeholder="Optional — e.g. awkward phrasing or wrong wording"
+                placeholder="Optional — awkward or wrong phrasing (not facts / task completion)"
                 spellcheck="true"
               ></textarea>
             </div>
@@ -185,11 +260,11 @@
                 id="qcComments"
                 class="input-textarea"
                 rows="2"
-                placeholder="Required when any score is 1 — what went wrong? If suggesting a system prompt change, say why."
+                placeholder="Required when any score is 1 or ship is No — what went wrong?"
                 spellcheck="true"
               ></textarea>
               <p id="qcCommentsHint" class="field-hint qc-comments-hint" hidden>
-                Comments are required when any rating is 1.
+                Comments are required when any rating is 1 or ship is No.
               </p>
             </div>
           </div>
@@ -463,8 +538,8 @@
             </div>
             <p class="editor-lead">
               Heard a mispronunciation? Paste the <strong>exact sentence</strong> and play it again.
-              If the same mistake comes back, note it in your comments — that confirms a consistent
-              issue, not a one-off slip.
+              Then tag whether the error came back — that separates a one-off slip from a
+              repeatable bug.
             </p>
             <div class="tts-qc-body">
               <div class="field">
@@ -482,6 +557,19 @@
                   Play sentence
                 </button>
               </div>
+              <fieldset class="qc-replay-tag">
+                <legend>After replay — one-off or bug?</legend>
+                <div class="qc-score-options">
+                  <label
+                    ><input type="radio" name="qcReplayTag" value="one-off" /> One-off
+                    (didn't come back)</label
+                  >
+                  <label
+                    ><input type="radio" name="qcReplayTag" value="repeatable" /> Repeatable
+                    bug (came back)</label
+                  >
+                </div>
+              </fieldset>
               <p class="field-hint tight tts-qc-meta" id="ttsQcMeta">
                 Plays with the same voice used in the call.
               </p>
@@ -525,17 +613,24 @@
           </li>
           <li>
             Run <strong>2–3 calls of 5–7 minutes</strong> each. Score accent, pronunciation,
-            naturalness, and artifacts after each call. Judge how it sounds — not whether prices or
-            product details are factually correct (those are invented on purpose).
+            prosody (naturalness), <strong>turn-taking</strong>, artifacts, understanding, and
+            language integrity. Set the top-line <strong>Ship to client?</strong> go/no-go for this
+            language.
+          </li>
+          <li>
+            <strong>Scope (intentional):</strong> evaluate delivery, language quality, and
+            conversational behavior — <em>not</em> factual correctness or task success. Prices and
+            product details are invented on purpose. “Wording / content issue” is for awkward
+            phrasing only.
           </li>
           <li>
             If something is mispronounced, paste that exact sentence under
-            <strong>Replay a sentence</strong> and play it again. Note whether the same mistake
-            returns.
+            <strong>Replay a sentence</strong>, play it again, and tag
+            <strong>one-off</strong> vs <strong>repeatable bug</strong>.
           </li>
           <li>
-            Use the <strong>Wording / content issue</strong> field when the phrasing itself is odd
-            or wrong (not the pronunciation). Leave a short comment whenever you score a 1.
+            Track how often you had to <strong>repeat</strong> yourself (ASR signal). Leave a short
+            comment whenever you score a 1 or choose No on ship.
           </li>
         </ol>
         <div class="modal-actions">
