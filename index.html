@@ -218,8 +218,8 @@
                 <label class="select-wrap">
                   <span class="visually-hidden">TTS model</span>
                   <select id="ttsModelSelect" class="select">
-                    <option value="eleven_v3">Eleven v3</option>
                     <option value="eleven_v3_conversational">Eleven v3 Conversational</option>
+                    <option value="eleven_v3">Eleven v3</option>
                     <option value="eleven_flash_v2_5">Eleven Flash v2.5</option>
                     <option value="eleven_turbo_v2_5">Eleven Turbo v2.5</option>
                     <option value="eleven_multilingual_v2">Eleven Multilingual v2</option>
@@ -255,8 +255,29 @@
                   value="0.8"
                 />
               </div>
+              <div id="v3ExpressiveFields" class="v3-expressive-fields" hidden>
+                <label class="setting-row setting-row-check" for="expressiveMode">
+                  <span class="setting-row-copy">
+                    <span class="setting-row-title">Expressive mode</span>
+                    <span class="setting-row-hint">Applies expressive audio tags prompt</span>
+                  </span>
+                  <input type="checkbox" id="expressiveMode" class="checkbox" checked />
+                </label>
+                <div class="field">
+                  <label class="field-label" for="suggestedAudioTags">Suggested audio tags</label>
+                  <textarea
+                    id="suggestedAudioTags"
+                    class="input-textarea input-textarea-compact"
+                    rows="3"
+                    spellcheck="false"
+                    placeholder="happy: when celebrating&#10;excited"
+                  ></textarea>
+                  <p class="field-hint">
+                    One per line: <code>tag</code> or <code>tag: description</code> (max 20).
+                  </p>
+                </div>
+              </div>
             </div>
-            <p class="card-model-foot" id="ttsFoot">TTS: — · waiting for live config</p>
           </section>
 
           <section class="rail-section" aria-labelledby="language-heading">
@@ -315,7 +336,6 @@
                 <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
               </select>
             </label>
-            <p class="card-model-foot" id="llmFoot">LLM: — · waiting for live config</p>
           </section>
         </aside>
 

@@ -46,8 +46,55 @@ const TTS_QC_MODEL_FALLBACK = {
   eleven_v3_conversational: "eleven_v3",
 };
 
+/** Agents docs: expressive_mode / suggested_audio_tags apply to these TTS models. */
+const V3_EXPRESSIVE_MODELS = new Set(["eleven_v3_conversational", "eleven_v3"]);
+
 function resolveTtsQcModelId(modelId) {
   return TTS_QC_MODEL_FALLBACK[modelId] || modelId;
+}
+
+function isV3ExpressiveModel(modelId) {
+  return V3_EXPRESSIVE_MODELS.has(modelId);
+}
+
+/** Serialize agent suggested_audio_tags for the Voices textarea. */
+function formatSuggestedAudioTags(tags) {
+  if (!Array.isArray(tags) || !tags.length) return "";
+  return tags
+    .map((item) => {
+      const tag = String(item?.tag ?? "").trim();
+      if (!tag) return "";
+      const description = String(item?.description ?? "").trim();
+      return description ? `${tag}: ${description}` : tag;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Parse textarea lines into Agents SuggestedAudioTag objects (max 20). */
+function parseSuggestedAudioTags(text) {
+  const lines = String(text || "").split("\n");
+  const out = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const sep = trimmed.indexOf(":");
+    let tag;
+    let description = "";
+    if (sep === -1) {
+      tag = trimmed;
+    } else {
+      tag = trimmed.slice(0, sep).trim();
+      description = trimmed.slice(sep + 1).trim();
+    }
+    tag = tag.slice(0, 30);
+    if (!tag) continue;
+    const entry = { tag };
+    if (description) entry.description = description.slice(0, 200);
+    out.push(entry);
+    if (out.length >= 20) break;
+  }
+  return out;
 }
 
 const els = {
@@ -73,11 +120,12 @@ const els = {
   speedOut: document.getElementById("speedOut"),
   similarityBoost: document.getElementById("similarityBoost"),
   similarityOut: document.getElementById("similarityOut"),
+  v3ExpressiveFields: document.getElementById("v3ExpressiveFields"),
+  expressiveMode: document.getElementById("expressiveMode"),
+  suggestedAudioTags: document.getElementById("suggestedAudioTags"),
   agentFetchStatus: document.getElementById("agentFetchStatus"),
   agentConfigBadge: document.getElementById("agentConfigBadge"),
   voiceConfigBadge: document.getElementById("voiceConfigBadge"),
-  llmFoot: document.getElementById("llmFoot"),
-  ttsFoot: document.getElementById("ttsFoot"),
   ttsQcText: document.getElementById("ttsQcText"),
   ttsQcGenerateBtn: document.getElementById("ttsQcGenerateBtn"),
   ttsQcStopBtn: document.getElementById("ttsQcStopBtn"),
@@ -169,18 +217,18 @@ function syncRangeOutputs() {
   els.similarityOut.textContent = formatFixed(els.similarityBoost.value);
 }
 
+function syncV3ExpressiveVisibility() {
+  const show = isV3ExpressiveModel(els.ttsModelSelect.value);
+  if (els.v3ExpressiveFields) {
+    els.v3ExpressiveFields.hidden = !show;
+  }
+}
+
 function updateFooters() {
-  const llm = els.llmSelect.value;
-  const tts = els.ttsModelSelect.value;
-  els.llmFoot.textContent = llm
-    ? `LLM: ${LLM_LABELS[llm] || llm} · session override`
-    : "LLM: — · waiting for live config";
-  els.ttsFoot.textContent = tts
-    ? `${TTS_LABELS[tts] || tts} · session voice settings`
-    : "TTS: — · waiting for live config";
   els.ttsQcMeta.textContent = liveConfigLoaded
     ? "Plays with the same voice used in the call."
     : "Waiting for call setup…";
+  syncV3ExpressiveVisibility();
 }
 
 function setConfigFieldsEnabled(enabled) {
@@ -196,6 +244,8 @@ function setConfigFieldsEnabled(enabled) {
     els.stability,
     els.speed,
     els.similarityBoost,
+    els.expressiveMode,
+    els.suggestedAudioTags,
     els.ttsQcGenerateBtn,
     els.ttsQcText,
   ];
@@ -218,6 +268,8 @@ function clearFormToEmptyState() {
     els.stability.value = 0;
     els.speed.value = 0.7;
     els.similarityBoost.value = 0;
+    if (els.expressiveMode) els.expressiveMode.checked = true;
+    if (els.suggestedAudioTags) els.suggestedAudioTags.value = "";
   });
   syncRangeOutputs();
   updateFooters();
@@ -252,6 +304,13 @@ function applyLoadedDefaultsToForm() {
     if (d.voice.stability != null) els.stability.value = d.voice.stability;
     if (d.voice.speed != null) els.speed.value = d.voice.speed;
     if (d.voice.similarityBoost != null) els.similarityBoost.value = d.voice.similarityBoost;
+    if (els.expressiveMode) {
+      els.expressiveMode.checked =
+        d.voice.expressiveMode == null ? true : Boolean(d.voice.expressiveMode);
+    }
+    if (els.suggestedAudioTags) {
+      els.suggestedAudioTags.value = formatSuggestedAudioTags(d.voice.suggestedAudioTags);
+    }
   });
 
   syncRangeOutputs();
@@ -274,6 +333,8 @@ function readSessionConfig() {
       stability: Number(els.stability.value),
       speed: Number(els.speed.value),
       similarityBoost: Number(els.similarityBoost.value),
+      expressiveMode: els.expressiveMode ? els.expressiveMode.checked : true,
+      suggestedAudioTags: parseSuggestedAudioTags(els.suggestedAudioTags?.value),
     },
   };
 }
@@ -305,6 +366,15 @@ function buildOverrides(cfg) {
   if (Number.isFinite(cfg.voice.speed)) overrides.tts.speed = cfg.voice.speed;
   if (Number.isFinite(cfg.voice.similarityBoost)) {
     overrides.tts.similarityBoost = cfg.voice.similarityBoost;
+  }
+  // Agents TTS config fields (camelCase like other SDK overrides). Shown for v3 models.
+  if (isV3ExpressiveModel(cfg.voice.modelId)) {
+    if (typeof cfg.voice.expressiveMode === "boolean") {
+      overrides.tts.expressiveMode = cfg.voice.expressiveMode;
+    }
+    if (Array.isArray(cfg.voice.suggestedAudioTags)) {
+      overrides.tts.suggestedAudioTags = cfg.voice.suggestedAudioTags;
+    }
   }
 
   if (!Object.keys(overrides.tts).length) delete overrides.tts;
@@ -415,6 +485,8 @@ function setSessionControlsDisabled(disabled) {
     els.stability,
     els.speed,
     els.similarityBoost,
+    els.expressiveMode,
+    els.suggestedAudioTags,
   ];
   for (const el of fields) {
     if (el) el.disabled = disabled;
@@ -514,6 +586,18 @@ function mapAgentPayload(agent, widget) {
       stability: toNum(tts.stability),
       speed: toNum(tts.speed),
       similarityBoost: toNum(tts.similarity_boost),
+      expressiveMode:
+        tts.expressive_mode == null ? null : Boolean(tts.expressive_mode),
+      suggestedAudioTags: Array.isArray(tts.suggested_audio_tags)
+        ? tts.suggested_audio_tags
+            .map((item) => {
+              const tag = String(item?.tag ?? "").trim();
+              if (!tag) return null;
+              const description = String(item?.description ?? "").trim();
+              return description ? { tag, description } : { tag };
+            })
+            .filter(Boolean)
+        : [],
     },
   };
 }
@@ -787,6 +871,17 @@ els.resetVoiceBtn.addEventListener("click", () => {
   if (loadedDefaults.voice.similarityBoost != null) {
     els.similarityBoost.value = loadedDefaults.voice.similarityBoost;
   }
+  if (els.expressiveMode) {
+    els.expressiveMode.checked =
+      loadedDefaults.voice.expressiveMode == null
+        ? true
+        : Boolean(loadedDefaults.voice.expressiveMode);
+  }
+  if (els.suggestedAudioTags) {
+    els.suggestedAudioTags.value = formatSuggestedAudioTags(
+      loadedDefaults.voice.suggestedAudioTags
+    );
+  }
   syncRangeOutputs();
   updateFooters();
 });
@@ -800,6 +895,8 @@ for (const range of [els.stability, els.speed, els.similarityBoost]) {
 
 els.voiceId.addEventListener("input", updateFooters);
 els.ttsModelSelect.addEventListener("change", updateFooters);
+els.expressiveMode?.addEventListener("change", updateFooters);
+els.suggestedAudioTags?.addEventListener("input", updateFooters);
 
 let confirmResolver = null;
 let activeModal = null;

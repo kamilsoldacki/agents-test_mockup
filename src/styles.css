@@ -608,20 +608,109 @@ body {
   color: var(--faint);
 }
 
+/* Soft Voices sliders: thin track, quiet thumb; tall hit area for touch. */
 .range {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
-  accent-color: var(--accent);
+  height: 1.75rem;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  accent-color: var(--muted);
+}
+
+.range:focus {
+  outline: none;
+}
+
+.range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+.range:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 999px;
+  background: var(--stroke);
+  border: 0;
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--stroke-strong);
+  box-shadow: none;
+}
+
+.range:hover::-webkit-slider-thumb {
+  border-color: var(--muted);
+}
+
+.range:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.range::-moz-range-track {
+  height: 2px;
+  border-radius: 999px;
+  background: var(--stroke);
+  border: 0;
+}
+
+.range::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--stroke-strong);
+  box-shadow: none;
+}
+
+.range:hover::-moz-range-thumb {
+  border-color: var(--muted);
+}
+
+.v3-expressive-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.v3-expressive-fields[hidden] {
+  display: none;
+}
+
+.setting-row-check {
   cursor: pointer;
 }
 
-.card-model-foot {
-  margin: 0.85rem 0 0;
-  padding-top: 0.65rem;
-  border-top: 1px solid var(--stroke);
-  font-family: var(--mono);
-  font-size: 0.625rem;
-  line-height: 1.4;
-  color: var(--faint);
+.checkbox {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--muted);
+  cursor: pointer;
+}
+
+.checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.input-textarea-compact {
+  min-height: 4.25rem;
 }
 
 .btn-link {
