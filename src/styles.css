@@ -403,27 +403,6 @@ body.page-mode-simply .workspace-preview {
   font-weight: 600;
 }
 
-.qc-ship-verdict {
-  margin: 0;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid #e8d9a8;
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.7);
-  flex-shrink: 0;
-}
-
-.qc-ship-verdict legend {
-  padding: 0 0.15rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1.35;
-}
-
-.qc-ship-verdict .field-hint {
-  margin: 0.35rem 0 0;
-}
-
 .qc-cluster {
   display: flex;
   flex-direction: column;

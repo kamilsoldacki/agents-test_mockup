@@ -152,12 +152,6 @@
             </summary>
             <div class="qc-legend-body">
               <p>
-                <strong>Ship verdict</strong> — Top-line call:
-                <em>Would you ship this agent to a client in this language?</em>
-                Yes = ready; With reservations = usable but note caveats in comments; No = do not
-                ship. This replaces any older Yes/No “Ship to client?” toggle.
-              </p>
-              <p>
                 <strong>Clusters</strong> —
                 <em>How it sounds</em> = voice delivery (accent, pronunciation, prosody,
                 artifacts). <em>How it behaved</em> = conversation dynamics (turn-taking, times you
@@ -214,9 +208,8 @@
                 scope). Leave a short example in the wording field.
               </p>
               <p>
-                <strong>Comments</strong> — Required for any score of 1: briefly say what went
-                wrong. If you suggest a system prompt change, write <em>why</em> here. Also note
-                caveats when the ship verdict is With reservations or No.
+                <strong>Comments</strong> — Required when any score is 1: briefly say what went
+                wrong. If you suggest a system prompt change, write <em>why</em> here.
               </p>
               <p>
                 <strong>Scope (intentional)</strong> — Evaluate
@@ -227,23 +220,6 @@
               </p>
             </div>
           </details>
-
-          <fieldset class="qc-ship-verdict" aria-describedby="qc-ship-verdict-hint">
-            <legend>
-              Would you ship this agent to a client in this language?
-            </legend>
-            <div class="qc-score-options">
-              <label><input type="radio" name="qcShipVerdict" value="yes" /> Yes</label>
-              <label
-                ><input type="radio" name="qcShipVerdict" value="reservations" /> With
-                reservations</label
-              >
-              <label><input type="radio" name="qcShipVerdict" value="no" /> No</label>
-            </div>
-            <p id="qc-ship-verdict-hint" class="field-hint tight">
-              Overall ship call for this language — not a binary Yes/No toggle.
-            </p>
-          </fieldset>
 
           <div class="qc-cluster" role="group" aria-labelledby="qc-sounds-heading">
             <h3 id="qc-sounds-heading" class="qc-cluster-heading">How it sounds</h3>
@@ -345,7 +321,7 @@
                 id="qcComments"
                 class="input-textarea"
                 rows="2"
-                placeholder="Required when any score is 1 — what went wrong?"
+                placeholder="Required when any score is 1"
                 spellcheck="true"
               ></textarea>
               <p id="qcCommentsHint" class="field-hint qc-comments-hint" hidden>
@@ -705,10 +681,6 @@
             “understanding” 1–3 score.
           </li>
           <li>
-            Give a top-line <strong>ship verdict</strong>: Yes / With reservations / No — would you
-            ship this agent to a client in this language?
-          </li>
-          <li>
             <strong>Scope (intentional):</strong> evaluate delivery, language quality, and
             conversational behavior — <em>not</em> factual correctness or task success. Prices and
             product details are invented on purpose. “Wording / content issue” is for awkward
@@ -720,8 +692,7 @@
             <strong>one-off</strong> vs <strong>repeatable bug</strong>.
           </li>
           <li>
-            Leave a short comment whenever you score a 1 (and note caveats for With reservations /
-            No).
+            Leave a short comment whenever you score a 1.
           </li>
         </ol>
         <div class="modal-actions">

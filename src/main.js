@@ -1579,7 +1579,7 @@ function qcCacheKey() {
   return `productions-qc-ratings:${currentResidency}:${currentAgentId}`;
 }
 const QC_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-/** 1–3 scoring dimensions (comments required when any is 1). */
+/** 1–3 scoring dimensions (comments also required when any is 1). */
 const QC_SCORE_NAMES = [
   "qcAccent",
   "qcPronunciation",
@@ -1589,7 +1589,7 @@ const QC_SCORE_NAMES = [
   "qcLanguageIntegrity",
 ];
 /** Non-score radios still persisted with the QC form. */
-const QC_EXTRA_RADIO_NAMES = ["qcShipVerdict", "qcRepeatCount", "qcReplayTag"];
+const QC_EXTRA_RADIO_NAMES = ["qcRepeatCount", "qcReplayTag"];
 
 function getCheckedRadioValue(name) {
   const checked = document.querySelector(`input[name="${name}"]:checked`);
@@ -1612,7 +1612,6 @@ function normalizeWordingIssue(value) {
 
 function readQcFormState() {
   return {
-    shipVerdict: getCheckedRadioValue("qcShipVerdict"),
     accent: getCheckedRadioValue("qcAccent"),
     pronunciation: getCheckedRadioValue("qcPronunciation"),
     naturalness: getCheckedRadioValue("qcNaturalness"),
@@ -1628,7 +1627,6 @@ function readQcFormState() {
 
 function applyQcFormState(state) {
   if (!state) return;
-  setCheckedRadioValue("qcShipVerdict", state.shipVerdict);
   setCheckedRadioValue("qcAccent", state.accent);
   setCheckedRadioValue("qcPronunciation", state.pronunciation);
   setCheckedRadioValue("qcNaturalness", state.naturalness);
@@ -1655,6 +1653,7 @@ function hasAnyScoreOfOne(state = readQcFormState()) {
 }
 
 function needsQcComments(state = readQcFormState()) {
+  // Comments required for any dimension scored 1.
   return hasAnyScoreOfOne(state);
 }
 
@@ -1685,7 +1684,6 @@ function persistQcRatings() {
 
 function clearQcForm() {
   applyQcFormState({
-    shipVerdict: "",
     accent: "",
     pronunciation: "",
     naturalness: "",
