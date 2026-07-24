@@ -340,18 +340,12 @@ body {
 }
 
 .qc-wording-field,
-.qc-comments-field,
-.qc-system-prompt-field {
+.qc-comments-field {
   margin: 0;
 }
 
-.qc-system-prompt-field {
-  grid-column: 1 / -1;
-}
-
 .qc-wording-field .input-textarea,
-.qc-comments-field .input-textarea,
-.qc-system-prompt-field .input-textarea {
+.qc-comments-field .input-textarea {
   min-height: 2.6rem;
   resize: vertical;
 }

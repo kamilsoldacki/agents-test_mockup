@@ -135,7 +135,6 @@ const els = {
   qcCommentsHint: document.getElementById("qcCommentsHint"),
   qcCommentsField: document.querySelector(".qc-comments-field"),
   qcWordingIssue: document.getElementById("qcWordingIssue"),
-  qcSystemPromptChange: document.getElementById("qcSystemPromptChange"),
   instructionsModal: document.getElementById("instructionsModal"),
   openInstructionsBtn: document.getElementById("openInstructionsBtn"),
   closeInstructionsBtn: document.getElementById("closeInstructionsBtn"),
@@ -945,14 +944,56 @@ function askClientChoiceConfirm(fieldLabel) {
 /**
  * Confirm before committing a client-agent field change.
  * Cancel reverts to the last committed value. Programmatic updates use suppressClientChoiceGuard.
+ * With confirmOnEditAttempt (text fields), confirm on focus/edit attempt so the modal
+ * appears before typing — not only on blur `change`.
  */
 function guardClientChoiceControl(
   el,
   fieldKey,
   fieldLabel,
-  { read = () => el.value, write = (v) => { el.value = v; }, onAfter = () => {} } = {}
+  {
+    read = () => el.value,
+    write = (v) => {
+      el.value = v;
+    },
+    onAfter = () => {},
+    confirmOnEditAttempt = false,
+  } = {}
 ) {
   if (!el) return;
+
+  let editConfirmed = false;
+  let confirmInFlight = false;
+
+  if (confirmOnEditAttempt) {
+    el.addEventListener("focus", async () => {
+      if (suppressClientChoiceGuard || editConfirmed || confirmInFlight) return;
+      confirmInFlight = true;
+      // Blur while the modal is open so the user cannot type behind it.
+      el.blur();
+      const ok = await askClientChoiceConfirm(fieldLabel);
+      confirmInFlight = false;
+      if (!ok) {
+        withSuppressedClientChoiceGuard(() => {
+          write(committedClientChoices[fieldKey]);
+        });
+        onAfter();
+        updateFooters();
+        return;
+      }
+      editConfirmed = true;
+      el.focus();
+    });
+
+    el.addEventListener("blur", () => {
+      // Defer so a successful confirm can refocus before we clear the unlock.
+      requestAnimationFrame(() => {
+        if (confirmInFlight || document.activeElement === el) return;
+        editConfirmed = false;
+      });
+    });
+  }
+
   el.addEventListener("change", async () => {
     if (suppressClientChoiceGuard) {
       onAfter();
@@ -965,19 +1006,24 @@ function guardClientChoiceControl(
       updateFooters();
       return;
     }
-    const ok = await askClientChoiceConfirm(fieldLabel);
-    if (!ok) {
-      // Revert only if still on this pending value; a newer change may have moved it.
-      if (read() === next) {
-        withSuppressedClientChoiceGuard(() => {
-          write(committedClientChoices[fieldKey]);
-        });
+    // Edit-attempt fields already confirmed on focus; skip a second modal on commit.
+    if (!(confirmOnEditAttempt && editConfirmed)) {
+      const ok = await askClientChoiceConfirm(fieldLabel);
+      if (!ok) {
+        // Revert only if still on this pending value; a newer change may have moved it.
+        if (read() === next) {
+          withSuppressedClientChoiceGuard(() => {
+            write(committedClientChoices[fieldKey]);
+          });
+        }
+        editConfirmed = false;
+        onAfter();
+        updateFooters();
+        return;
       }
-      onAfter();
-      updateFooters();
-      return;
     }
     committedClientChoices[fieldKey] = next;
+    editConfirmed = false;
     onAfter();
     updateFooters();
   });
@@ -990,7 +1036,9 @@ function guardClientChoiceSelect(select, fieldKey, fieldLabel) {
 guardClientChoiceSelect(els.languageSelect, "language", "Language");
 guardClientChoiceSelect(els.llmSelect, "llm", "LLM");
 guardClientChoiceSelect(els.ttsModelSelect, "modelId", "Model");
-guardClientChoiceControl(els.voiceId, "voiceId", "Voice ID");
+guardClientChoiceControl(els.voiceId, "voiceId", "Voice ID", {
+  confirmOnEditAttempt: true,
+});
 guardClientChoiceControl(els.stability, "stability", "Stability", {
   onAfter: syncRangeOutputs,
 });
@@ -1051,7 +1099,6 @@ function readQcFormState() {
     artifacts: getCheckedRadioValue("qcArtifacts"),
     wordingIssue: (els.qcWordingIssue?.value || "").trim(),
     comments: (els.qcComments?.value || "").trim(),
-    systemPromptChange: (els.qcSystemPromptChange?.value || "").trim(),
   };
 }
 
@@ -1065,10 +1112,6 @@ function applyQcFormState(state) {
     els.qcWordingIssue.value = normalizeWordingIssue(state.wordingIssue);
   }
   if (els.qcComments) els.qcComments.value = state.comments || "";
-  if (els.qcSystemPromptChange) {
-    els.qcSystemPromptChange.value =
-      typeof state.systemPromptChange === "string" ? state.systemPromptChange : "";
-  }
 }
 
 function hasAnyScoreOfOne(state = readQcFormState()) {
@@ -1129,7 +1172,6 @@ for (const name of QC_SCORE_NAMES) {
 }
 els.qcWordingIssue?.addEventListener("input", onQcFormChange);
 els.qcComments?.addEventListener("input", onQcFormChange);
-els.qcSystemPromptChange?.addEventListener("input", onQcFormChange);
 
 restoreQcRatings();
 validateQcCommentsRequired();

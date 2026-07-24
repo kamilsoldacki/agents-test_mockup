@@ -90,11 +90,8 @@
               </p>
               <p>
                 <strong>Comments</strong> — Required for any score of 1: briefly say what went wrong
-                so the team can act on it.
-              </p>
-              <p>
-                <strong>System prompt change</strong> — If you suggest changing the system prompt,
-                use this field to explain <em>why</em> (optional free-form note).
+                so the team can act on it. If you suggest a system prompt change, write
+                <em>why</em> here.
               </p>
               <p>
                 <strong>Scope</strong> — Only review languages you are native or fluent in. Run
@@ -154,30 +151,20 @@
             </div>
 
             <div class="field qc-comments-field">
-              <label class="field-label" for="qcComments">Comments / examples</label>
+              <label class="field-label" for="qcComments">
+                Comments / examples (required for any 1; if suggesting a system prompt change, say
+                why)
+              </label>
               <textarea
                 id="qcComments"
                 class="input-textarea"
                 rows="2"
-                placeholder="Required when any score is 1 — what went wrong?"
+                placeholder="Required when any score is 1 — what went wrong? If suggesting a system prompt change, say why."
                 spellcheck="true"
               ></textarea>
               <p id="qcCommentsHint" class="field-hint qc-comments-hint" hidden>
                 Comments are required when any rating is 1.
               </p>
-            </div>
-
-            <div class="field qc-system-prompt-field">
-              <label class="field-label" for="qcSystemPromptChange">
-                Suggested system prompt change (why)
-              </label>
-              <textarea
-                id="qcSystemPromptChange"
-                class="input-textarea"
-                rows="2"
-                placeholder="Optional — if you suggest a system prompt change, explain why"
-                spellcheck="true"
-              ></textarea>
             </div>
           </div>
         </aside>
